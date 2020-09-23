@@ -86,20 +86,29 @@ void OnTick() {
    	_TrendManager.AnalyzeTrend(TrendMA_MinCandles, _FastTrendMASetting, _SlowTrendMASetting);
 
       if(_Period == TrendMA_TimeFrame) {
-      	Trend* _SelectedTrend = _TrendManager.GetSelectedTrend();
-
 	      if(_TrendManager.GetCurrState() == Trend::State::VALID_UPTREND) {
-	         DrawTrendMarker(_MarkersBuffer.GetNewObjectId(), iTimeMQL4(_Symbol, TrendMA_TimeFrame, 0), Bid, true, TrendMA_UpClr);
-	         DrawTrendMarker(_SelectedTrend.GetSignalID(), _SelectedTrend.GetBeginDateTime(), _SelectedTrend.GetHighestValue(), _SelectedTrend.GetEndDateTime(), _SelectedTrend.GetLowestValue(), TrendMA_UpClr);
+	         _MarkersBuffer.GetNewObjectId();
 	      }
 	      if(_TrendManager.GetCurrState() == Trend::State::VALID_DOWNTREND) {
-	         DrawTrendMarker(_MarkersBuffer.GetNewObjectId(), iTimeMQL4(_Symbol, TrendMA_TimeFrame, 0), Bid, false, TrendMA_DownClr);
-	         DrawTrendMarker(_SelectedTrend.GetSignalID(), _SelectedTrend.GetBeginDateTime(), _SelectedTrend.GetLowestValue(), _SelectedTrend.GetEndDateTime(), _SelectedTrend.GetHighestValue(), TrendMA_DownClr);
+	         _MarkersBuffer.GetNewObjectId();   
 	      }
       }
    }
    
-   if(_TrendManager.GetCurrState() != Trend::State::INVALID_TREND) {  
+   if(_Period == TrendMA_TimeFrame) {
+   	Trend* _SelectedTrend = _TrendManager.GetSelectedTrend();
+
+      if(_TrendManager.GetCurrState() == Trend::State::VALID_UPTREND) {
+         DrawTrendMarker(_MarkersBuffer.GetSelecterObjectId(), iTimeMQL4(_Symbol, TrendMA_TimeFrame, 0), Low[0], true, TrendMA_UpClr);
+         DrawTrendMarker(_SelectedTrend.GetSignalID(), _SelectedTrend.GetBeginDateTime(), _SelectedTrend.GetHighestValue(), _SelectedTrend.GetEndDateTime(), _SelectedTrend.GetLowestValue(), TrendMA_UpClr);
+      }
+      if(_TrendManager.GetCurrState() == Trend::State::VALID_DOWNTREND) {
+         DrawTrendMarker(_MarkersBuffer.GetSelecterObjectId(), iTimeMQL4(_Symbol, TrendMA_TimeFrame, 0), Low[0], false, TrendMA_DownClr);
+         DrawTrendMarker(_SelectedTrend.GetSignalID(), _SelectedTrend.GetBeginDateTime(), _SelectedTrend.GetLowestValue(), _SelectedTrend.GetEndDateTime(), _SelectedTrend.GetHighestValue(), TrendMA_DownClr);
+      }
+   }
+   
+   /*if(_TrendManager.GetCurrState() != Trend::State::INVALID_TREND) {  
    	_ReggieOrderManager.AnalyzeOrders(_PullBackManager.GetCurrMASlow());
    		
    	if(IsNewBar(PullBackMA_TimeFrame)) {
@@ -125,7 +134,7 @@ void OnTick() {
 			
          DrawMovingAverage(_PullBackMA_FastBuffer.GetSelecterObjectId(), 0, _MA_PrevFast, _MA_CurrFast, _TrendManager.GetCurrState() == Trend::State::VALID_UPTREND ? PullBackMA_UpClr : PullBackMA_DownClr);
 		}
-   }
+   }*/
 }
 
 //+------------------------------------------------------------------+

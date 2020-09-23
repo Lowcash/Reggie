@@ -131,54 +131,67 @@ void ReggieOrderManager::AnalyzeOrders(const double p_CriticalValue) {
 		const ReggieOrder::OrderType OrderType = ((ReggieOrder*)_ReggieOrder).GetOrderType();
 		
 		if(_R1OrderState == Order::State::PLACED) {
-			/*if(OrderSelect(_R1Order.m_Ticket, SELECT_BY_TICKET, MODE_HISTORY) && OrderCloseTime() != NULL) {
-				_R1Order.SetOrderState(ABORTED);
+			if(OrderSelect(_R1Order.GetTicket())) {
+				_R1Order.SetState(Order::State::ABORTED);
 				
-				Print("Modified");
-				
-				if(!OrderSelect(_R2Order.m_Ticket, SELECT_BY_TICKET)) {
+				if(!OrderSelect(_R2Order.GetTicket())) {
 					Print("OrderSelect failed with error #", GetLastError());
 				}
 				
-				if(!OrderModify(OrderTicket(), OrderOpenPrice(), _R2Order.m_Price, OrderTakeProfit(), OrderExpiration())) {
-					Print("OrderModify failed with error #", GetLastError());
-				}
-			}*/
+				MqlTradeRequest _Request;
+			   MqlTradeResult _Result;
+			   
+			   _Request.action = TRADE_ACTION_SLTP;
+			   _Request.sl = _R2Order.GetPrice();
+			   
+			   if(!OrderSend(_Request, _Result)) {
+			      Print("OrderModify failed with error #", GetLastError());
+			   }
+			}
 		}
 		
 		if(_R2OrderState == Order::State::PLACED) {
-			/*if(OrderSelect(_R2Order.m_Ticket, SELECT_BY_TICKET, MODE_HISTORY) && OrderCloseTime() != NULL) {
-				_R2Order.SetOrderState(Order::State::ABORTED);
-			}*/
+			if(OrderSelect(_R2Order.GetTicket())) {
+				_R2Order.SetState(Order::State::ABORTED);
+			}
 		}
 			
 		if(_R1OrderState == Order::State::PENDING &&
-			((OrderType == ReggieOrder::OrderType::BUY && Ask > _R1Order.m_Price) ||
-			(OrderType == ReggieOrder::OrderType::SELL && Bid < _R1Order.m_Price)))  {
+			((OrderType == ReggieOrder::OrderType::BUY && Ask > _R1Order.GetPrice()) ||
+			(OrderType == ReggieOrder::OrderType::SELL && Bid < _R1Order.GetPrice())))  {
 			_R1Order.SetState(Order::State::PLACED);
 		}
 
 		if(_R2OrderState == Order::State::PENDING &&
-			((OrderType == ReggieOrder::OrderType::BUY && Ask > _R2Order.m_Price) ||
-			(OrderType == ReggieOrder::OrderType::SELL && Bid < _R2Order.m_Price))) {
+			((OrderType == ReggieOrder::OrderType::BUY && Ask > _R2Order.GetPrice()) ||
+			(OrderType == ReggieOrder::OrderType::SELL && Bid < _R2Order.GetPrice()))) {
 			_R2Order.SetState(Order::State::PLACED);
 		}
 		
 		if((OrderType == ReggieOrder::OrderType::BUY && p_CriticalValue > Close[1]) ||
 			(OrderType == ReggieOrder::OrderType::SELL && p_CriticalValue < Close[1])) {
+			MqlTradeRequest _Request;
+			MqlTradeResult _Result;
+			
+			_Request.action = TRADE_ACTION_REMOVE;
+			
 			if(_R1OrderState == Order::State::PENDING) {
-				/*if(!OrderDelete(_R1Order.m_Ticket)) {
-					Print("Order failed with error #", GetLastError());
+			   _Request.order = _R1Order.GetTicket();
+			
+				if(OrderSend(_Request, _Result)) {
+				   _R1Order.SetState(Order::State::ABORTED);
 				} else {
-					_R1Order.SetOrderState(Order::State::ABORTED);
-				}*/	
+					Print("Order failed with error #", GetLastError());
+				}
 			}
 			if(_R2OrderState == Order::State::PENDING) {
-				/*if(!OrderDelete(_R2Order.m_Ticket)) {
-					Print("Order failed with error #", GetLastError());
+			   _Request.order = _R2Order.GetTicket();
+			   
+				if(OrderSend(_Request, _Result)) {
+				   _R2Order.SetState(Order::State::ABORTED);
 				} else {
-					_R2Order.SetOrderState(Order::State::ABORTED);
-				}*/
+					Print("Order failed with error #", GetLastError());
+				}
 			}
 		}
 		

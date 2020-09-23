@@ -13,10 +13,10 @@ class Order {
  public:
  	enum State { ABORTED = -1, PENDING = 0, PLACED = 1 };
 
- 	ulong m_Ticket;
- 	double m_Price;
  private:
  	State m_State;
+ 	ulong m_Ticket;
+ 	double m_Price;
  public:
  	Order(){}
  
@@ -31,6 +31,8 @@ class Order {
  		m_State = PENDING;
  	}
  	
+ 	ulong GetTicket() const { return(m_Ticket); }
+ 	double GetPrice() const { return(m_Price); }
  	State GetState() const { return(m_State); }
  	
  	void SetState(const State p_State) { m_State = p_State; }

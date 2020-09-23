@@ -84,15 +84,12 @@ Trend::State TrendManager::GetState(const int p_MinCandles, const MovingAverageS
 	      bool _IsUpTrend = true, _IsDownTrend = true;
 	      double _MA_CurrFast = 0, _MA_CurrSlow = 0;
 	      
-	      for(int i = 0; i < p_MinCandles && _IsUpTrend && _IsDownTrend; ++i) {
-	         _MA_CurrFast = iMA(_Symbol, p_FastMASettings.m_TimeFrame, p_FastMASettings.m_Period, i, p_FastMASettings.m_Method, p_FastMASettings.m_AppliedTo);
-	         _MA_CurrSlow = iMA(_Symbol, p_SlowMASettings.m_TimeFrame, p_SlowMASettings.m_Period, i, p_SlowMASettings.m_Method, p_SlowMASettings.m_AppliedTo);
+	      for(int i = 1; i <= p_MinCandles && _IsUpTrend && _IsDownTrend; ++i) {
+	         _MA_CurrFast = iMAMQL4(_Symbol, p_FastMASettings.m_TimeFrame, p_FastMASettings.m_Period, 0, p_FastMASettings.m_Method, p_FastMASettings.m_AppliedTo, i);
+	         _MA_CurrSlow = iMAMQL4(_Symbol, p_SlowMASettings.m_TimeFrame, p_SlowMASettings.m_Period, 0, p_SlowMASettings.m_Method, p_SlowMASettings.m_AppliedTo, i);
 
-	         if(!(Close[i] > _MA_CurrFast && _MA_CurrFast > _MA_CurrSlow))
-	            _IsUpTrend = false;
-	         
-	         if(!(Close[i] < _MA_CurrFast && _MA_CurrFast < _MA_CurrSlow)) 
-	            _IsDownTrend = false;
+	         if(!(Close[i] > _MA_CurrFast && _MA_CurrFast > _MA_CurrSlow)) { _IsUpTrend = false; }
+	         if(!(Close[i] < _MA_CurrFast && _MA_CurrFast < _MA_CurrSlow)) { _IsDownTrend = false; }   
 	      }
 	
 	      if(_IsUpTrend) { return(Trend::State::VALID_UPTREND); }
@@ -115,8 +112,8 @@ void TrendManager::UpdateTrendInfo(const bool p_IsNewTrend, const datetime p_Tim
 }
 
 void TrendManager::AnalyzeTrend(const int p_MinCandles, const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_SlowMASettings) {
-   m_CurrMAFast = iMA(_Symbol, p_FastMASettings.m_TimeFrame, p_FastMASettings.m_Period, 0, p_FastMASettings.m_Method, p_FastMASettings.m_AppliedTo);
-   m_CurrMASlow = iMA(_Symbol, p_SlowMASettings.m_TimeFrame, p_SlowMASettings.m_Period, 0, p_SlowMASettings.m_Method, p_SlowMASettings.m_AppliedTo);
+   m_CurrMAFast = iMAMQL4(_Symbol, p_FastMASettings.m_TimeFrame, p_FastMASettings.m_Period, 0, p_FastMASettings.m_Method, p_FastMASettings.m_AppliedTo, 0);
+   m_CurrMASlow = iMAMQL4(_Symbol, p_SlowMASettings.m_TimeFrame, p_SlowMASettings.m_Period, 0, p_SlowMASettings.m_Method, p_SlowMASettings.m_AppliedTo, 0);
    
    Trend::State _PrevState = m_CurrState;
 	
@@ -179,9 +176,9 @@ void PullBackManager::UpdatePullBackInfo(const bool p_IsNewPullBack, const datet
 }
 
 void PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendState, const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_MediumMASettings, const MovingAverageSettings &p_SlowMASettings) {
-	m_CurrMAFast = iMA(_Symbol, p_FastMASettings.m_TimeFrame, p_FastMASettings.m_Period, 0, p_FastMASettings.m_Method, p_FastMASettings.m_AppliedTo);
-	m_CurrMAMedium = iMA(_Symbol, p_MediumMASettings.m_TimeFrame, p_MediumMASettings.m_Period, 0, p_MediumMASettings.m_Method, p_MediumMASettings.m_AppliedTo);
-	m_CurrMAFast = iMA(_Symbol, p_SlowMASettings.m_TimeFrame, p_SlowMASettings.m_Period, 0, p_SlowMASettings.m_Method, p_SlowMASettings.m_AppliedTo);
+	m_CurrMAFast = iMAMQL4(_Symbol, p_FastMASettings.m_TimeFrame, p_FastMASettings.m_Period, 0, p_FastMASettings.m_Method, p_FastMASettings.m_AppliedTo, 0);
+	m_CurrMAMedium = iMAMQL4(_Symbol, p_MediumMASettings.m_TimeFrame, p_MediumMASettings.m_Period, 0, p_MediumMASettings.m_Method, p_MediumMASettings.m_AppliedTo, 0);
+	m_CurrMAFast = iMAMQL4(_Symbol, p_SlowMASettings.m_TimeFrame, p_SlowMASettings.m_Period, 0, p_SlowMASettings.m_Method, p_SlowMASettings.m_AppliedTo, 0);
 	
 	PullBack::State _PrevState = m_CurrState;
 	
@@ -198,7 +195,7 @@ void PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendState, const
 }
 
 PullBack::State PullBackManager::GetState(Trend::State p_TrendState) {
-	const double _PrevEMA = iMA(_Symbol, PERIOD_M5, 8, 2, MODE_EMA, PRICE_CLOSE);
+	const double _PrevEMA = iMAMQL4(_Symbol, PERIOD_M5, 8, 0, MODE_EMA, PRICE_CLOSE, 2);
 	
 	switch(p_TrendState) {
 		case Trend::State::VALID_UPTREND: {
