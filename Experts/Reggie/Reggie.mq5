@@ -100,23 +100,22 @@ void OnTick() {
    }
    
    if(_TrendManager.GetCurrState() != Trend::State::INVALID_TREND) {  
-   	//_ReggieOrderManager.AnalyzeOrders(_PullBackManager.GetCurrMASlow());
+   	_ReggieOrderManager.AnalyzeOrders(_PullBackManager.GetCurrMASlow());
    		
    	if(IsNewBar(PullBackMA_TimeFrame)) {
 	      _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState(), _FastPullBackMASetting, _MediumPullBackMASetting, _SlowPullBackMASetting);
 			
 			if(_ReggieOrderManager.GetActiveTickets() == 0) {
 				if(_PullBackManager.GetCurrState() == PullBack::State::VALID_UPPULLBACK) {
-				   _ReggieOrderManager.AddOrder(ReggieOrder::Type::ORDER_BUY);
+				   _ReggieOrderManager.AddOrder(ReggieOrder::OrderType::BUY);
 				}
 				if(_PullBackManager.GetCurrState() == PullBack::State::VALID_DOWNPULLBACK) {
-				   _ReggieOrderManager.AddOrder(ReggieOrder::Type::ORDER_SELL);
+				   _ReggieOrderManager.AddOrder(ReggieOrder::OrderType::SELL);
 				}
 			}
    	
       	_PullBackMA_FastBuffer.GetNewObjectId();
       }
-   	
 
 		if(_Period == PullBackMA_TimeFrame) {
 	      const double _MA_PrevFast = iMA(_Symbol, PullBackMA_TimeFrame, PullBackMA_Fast, 0, PullBackMA_Method, PullBackMA_AppliedTo);

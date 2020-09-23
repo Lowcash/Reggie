@@ -7,22 +7,24 @@
 #property link      "https://www.mql5.com"
 #property version   "1.00"
 
+#include <../../../Include/Object.mqh>
+
 class Order {
  public:
  	enum State { ABORTED = -1, PENDING = 0, PLACED = 1 };
 
- 	int m_Ticket;
+ 	ulong m_Ticket;
  	double m_Price;
  private:
  	State m_State;
  public:
  	Order(){}
  
- 	Order(const int p_Ticket, const double p_Price) {
+ 	Order(const ulong p_Ticket, const double p_Price) {
  		SetOrder(p_Ticket, p_Price);
  	}
  		
- 	void SetOrder(const int p_Ticket, const double p_Price) {
+ 	void SetOrder(const ulong p_Ticket, const double p_Price) {
  		m_Ticket = p_Ticket;
  		m_Price = p_Price;
  		
@@ -34,24 +36,24 @@ class Order {
  	void SetState(const State p_State) { m_State = p_State; }
 };
 
-class ReggieOrder {
+class ReggieOrder : public CObject {
  public:
- 	enum Type { ORDER_BUY, ORDER_SELL };
+ 	enum OrderType { BUY, SELL };
  	
  	Order m_ReggieR1Order;
  	Order m_ReggieR2Order;
  private:
- 	Type m_Type;
+ 	OrderType m_OrderType;
  public:
  	ReggieOrder(){};
  	
- 	ReggieOrder(const Type p_Type, const int p_R1Ticket, const int p_R2Ticket, const double p_R1Price, const double p_R2Price, const double p_Volume)
- 		: m_Type(p_Type) {
- 		SetReggieOrder(p_Type, p_R1Ticket, p_R2Ticket, p_R1Price, p_R2Price, p_Volume);
+ 	ReggieOrder(const OrderType p_OrderType, const ulong p_R1Ticket, const ulong p_R2Ticket, const double p_R1Price, const double p_R2Price, const double p_Volume)
+ 		: m_OrderType(p_OrderType) {
+ 		SetReggieOrder(p_OrderType, p_R1Ticket, p_R2Ticket, p_R1Price, p_R2Price, p_Volume);
  	}
  	
- 	void SetReggieOrder(const Type p_Type, const int p_R1Ticket, const int p_R2Ticket, const double p_R1Price, const double p_R2Price, const double p_Volume) {
- 		m_Type = p_Type;
+ 	void SetReggieOrder(const OrderType p_OrderType, const ulong p_R1Ticket, const ulong p_R2Ticket, const double p_R1Price, const double p_R2Price, const double p_Volume) {
+ 		m_OrderType = p_OrderType;
  		
  		m_ReggieR1Order.SetOrder(p_R1Ticket, p_R1Price);
  		m_ReggieR2Order.SetOrder(p_R2Ticket, p_R2Price);
@@ -60,7 +62,7 @@ class ReggieOrder {
  	Order *GetReggieR1Order() { return(&m_ReggieR1Order); }
  	Order *GetReggieR2Order() { return(&m_ReggieR2Order); }
  	
- 	Type GetType() const { return(m_Type); }
+ 	OrderType GetOrderType() const { return(m_OrderType); }
  	
- 	void SetType(const Type p_Type) { m_Type = p_Type; }
+ 	void SetOrderType(const OrderType p_OrderType) { m_OrderType = p_OrderType; }
 };

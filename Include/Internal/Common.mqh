@@ -9,6 +9,8 @@
 #include "MQL4Helper.mqh"
 #include <Generic/Hashmap.mqh>
 
+#define ForEachCObject(node, list)  CObject* node; for(node = list.GetFirstNode(); node != NULL; node.Next())
+
 struct ObjectBuffer {
  private:
    const string m_ObjectId;
