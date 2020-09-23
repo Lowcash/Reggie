@@ -10,6 +10,9 @@
 #include "../../Include/Internal/MQL4Helper.mqh"
 #include "../../Include/Internal/Common.mqh"
 
+#include "Signal/SignalManager.mqh"
+#include "Order/OrderManager.mqh"
+
 //+------------------------------------------------------------------+
 //|                                                       Properties |
 //+------------------------------------------------------------------+
@@ -35,16 +38,36 @@ int                 PullBackMA_Fast         = 8;
 color               PullBackMA_SlowColor    = clrGold;
 color               PullBackMA_MediumColor  = clrCornflowerBlue;
 color               PullBackMA_FastColor    = clrMediumSeaGreen;
-extern int                 PullBackMA_MinCandles   = 5;
+input int                 PullBackMA_MinCandles   = 5;
 
 color               PullBackMA_UpClr        = clrForestGreen;
 color               PullBackMA_DownClr      = clrCrimson;
 
-extern double              LotSize                 = 0.01;
+input double              LotSize                 = 0.01;
+
+//+------------------------------------------------------------------+
+//|                                                        Variables |
+//+------------------------------------------------------------------+
 
 const int                  _Markers_BufferSize     = 1000;
+
+ObjectBuffer               _MarkersBuffer("Marker", _Markers_BufferSize);
+
+MovingAverageSettings		_FastTrendMASetting(TrendMA_TimeFrame, TrendMA_Method, TrendMA_AppliedTo, TrendMA_Fast, 0);
+MovingAverageSettings		_SlowTrendMASetting(TrendMA_TimeFrame, TrendMA_Method, TrendMA_AppliedTo, TrendMA_Slow, 0);
+MovingAverageSettings		_FastPullBackMASetting(PullBackMA_TimeFrame, PullBackMA_Method, PullBackMA_AppliedTo, PullBackMA_Fast, 0);
+MovingAverageSettings		_MediumPullBackMASetting(PullBackMA_TimeFrame, PullBackMA_Method, PullBackMA_AppliedTo, PullBackMA_Medium, 0);
+MovingAverageSettings		_SlowPullBackMASetting(PullBackMA_TimeFrame, PullBackMA_Method, PullBackMA_AppliedTo, PullBackMA_Slow, 0);
+
 const int                  _TrendMA_BufferSize     = 1000;
 const int                  _PullBackMA_BufferSize  = 1000;
+
+ObjectBuffer               _PullBackMA_FastBuffer("PullBackMA_Fast", _PullBackMA_BufferSize);
+
+TrendManager               _TrendManager("TrendManager", _TrendMA_BufferSize);
+PullBackManager				_PullBackManager("PullBackManager", _PullBackMA_BufferSize);
+
+ReggieOrderManager			_ReggieOrderManager(LotSize);
 
 int OnInit() {
    return(INIT_SUCCEEDED);
@@ -58,6 +81,52 @@ void OnDeinit(const int reason) {
 
 void OnTick() {
    UpdatePredefinedVars();
+   
+   if(IsNewBar(TrendMA_TimeFrame)) {
+   	_TrendManager.AnalyzeTrend(TrendMA_MinCandles, _FastTrendMASetting, _SlowTrendMASetting);
+
+      if(_Period == TrendMA_TimeFrame) {
+      	Trend* _SelectedTrend = _TrendManager.GetSelectedTrend();
+
+	      if(_TrendManager.GetCurrState() == Trend::State::VALID_UPTREND) {
+	         DrawTrendMarker(_MarkersBuffer.GetNewObjectId(), iTimeMQL4(_Symbol, TrendMA_TimeFrame, 0), Bid, true, TrendMA_UpClr);
+	         DrawTrendMarker(_SelectedTrend.GetSignalID(), _SelectedTrend.GetBeginDateTime(), _SelectedTrend.GetHighestValue(), _SelectedTrend.GetEndDateTime(), _SelectedTrend.GetLowestValue(), TrendMA_UpClr);
+	      }
+	      if(_TrendManager.GetCurrState() == Trend::State::VALID_DOWNTREND) {
+	         DrawTrendMarker(_MarkersBuffer.GetNewObjectId(), iTimeMQL4(_Symbol, TrendMA_TimeFrame, 0), Bid, false, TrendMA_DownClr);
+	         DrawTrendMarker(_SelectedTrend.GetSignalID(), _SelectedTrend.GetBeginDateTime(), _SelectedTrend.GetLowestValue(), _SelectedTrend.GetEndDateTime(), _SelectedTrend.GetHighestValue(), TrendMA_DownClr);
+	      }
+      }
+   }
+   
+   if(_TrendManager.GetCurrState() != Trend::State::INVALID_TREND) {  
+   	//_ReggieOrderManager.AnalyzeOrders(_PullBackManager.GetCurrMASlow());
+   		
+   	if(IsNewBar(PullBackMA_TimeFrame)) {
+	      _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState(), _FastPullBackMASetting, _MediumPullBackMASetting, _SlowPullBackMASetting);
+			
+			if(_ReggieOrderManager.GetActiveTickets() == 0) {
+				if(_PullBackManager.GetCurrState() == PullBack::State::VALID_UPPULLBACK) {
+				   _ReggieOrderManager.AddOrder(ReggieOrder::Type::ORDER_BUY);
+				}
+				if(_PullBackManager.GetCurrState() == PullBack::State::VALID_DOWNPULLBACK) {
+				   _ReggieOrderManager.AddOrder(ReggieOrder::Type::ORDER_SELL);
+				}
+			}
+   	
+      	_PullBackMA_FastBuffer.GetNewObjectId();
+      }
+   	
+
+		if(_Period == PullBackMA_TimeFrame) {
+	      const double _MA_PrevFast = iMA(_Symbol, PullBackMA_TimeFrame, PullBackMA_Fast, 0, PullBackMA_Method, PullBackMA_AppliedTo);
+	      const double _MA_CurrFast = iMA(_Symbol, PullBackMA_TimeFrame, PullBackMA_Fast, 1, PullBackMA_Method, PullBackMA_AppliedTo);
+	
+			// In case MA is rendering incorrectly, try change Model to "Every tick..."
+			
+         DrawMovingAverage(_PullBackMA_FastBuffer.GetSelecterObjectId(), 0, _MA_PrevFast, _MA_CurrFast, _TrendManager.GetCurrState() == Trend::State::VALID_UPTREND ? PullBackMA_UpClr : PullBackMA_DownClr);
+		}
+   }
 }
 
 //+------------------------------------------------------------------+
