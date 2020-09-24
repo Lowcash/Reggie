@@ -80,6 +80,19 @@ void OnDeinit(const int reason) {
 }
 
 void OnTick() {
+   /*if(_Period == PullBackMA_TimeFrame && _TrendManager.GetCurrState() != Trend::State::INVALID_TREND) {
+      if(IsNewBar(PullBackMA_TimeFrame)) {
+	      _PullBackMA_FastBuffer.GetNewObjectId();
+	   }
+      
+      const double _MA_PrevFast = iMAMQL4(_Symbol, PullBackMA_TimeFrame, PullBackMA_Fast, 0, PullBackMA_Method, PullBackMA_AppliedTo, 1);
+      const double _MA_CurrFast = iMAMQL4(_Symbol, PullBackMA_TimeFrame, PullBackMA_Fast, 0, PullBackMA_Method, PullBackMA_AppliedTo, 0);
+
+		// In case MA is rendering incorrectly, try change Model to "Every tick..."
+		
+      DrawMovingAverage(_PullBackMA_FastBuffer.GetSelecterObjectId(), 0, _MA_PrevFast, _MA_CurrFast, _TrendManager.GetCurrState() == Trend::State::VALID_UPTREND ? PullBackMA_UpClr : PullBackMA_DownClr);
+	}*/
+   
    UpdatePredefinedVars();
    
    if(IsNewBar(TrendMA_TimeFrame)) {
@@ -120,18 +133,7 @@ void OnTick() {
 				   _ReggieOrderManager.AddOrder(ReggieOrder::OrderType::SELL);
 				}
 			}
-   	
-      	_PullBackMA_FastBuffer.GetNewObjectId();
       }
-
-		if(_Period == PullBackMA_TimeFrame) {
-	      const double _MA_PrevFast = iMAMQL4(_Symbol, PullBackMA_TimeFrame, PullBackMA_Fast, 0, PullBackMA_Method, PullBackMA_AppliedTo, 1);
-	      const double _MA_CurrFast = iMAMQL4(_Symbol, PullBackMA_TimeFrame, PullBackMA_Fast, 0, PullBackMA_Method, PullBackMA_AppliedTo, 0);
-	
-			// In case MA is rendering incorrectly, try change Model to "Every tick..."
-			
-         DrawMovingAverage(_PullBackMA_FastBuffer.GetSelecterObjectId(), 0, _MA_PrevFast, _MA_CurrFast, _TrendManager.GetCurrState() == Trend::State::VALID_UPTREND ? PullBackMA_UpClr : PullBackMA_DownClr);
-		}
    }
 }
 

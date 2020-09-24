@@ -40,69 +40,69 @@ ReggieOrderManager::ReggieOrderManager(const double p_LotSize)
 
 bool ReggieOrderManager::AddOrder(const ReggieOrder::OrderType p_OrderOrderType) {
    switch(p_OrderOrderType) {
- 			case ReggieOrder::OrderType::BUY: {
- 				const double _EnterPrice = iHigh(_Symbol, PERIOD_M5, iHighest(_Symbol, PERIOD_M5, MODE_HIGH, 5, 1)) + 3 * m_PipValue /*+ (m_PipValue*MarketInfo(_Symbol, MODE_SPREAD))*/;
- 				const double _StopLossPrice = Bid - 3 * m_PipValue;
- 				
- 				const double _Move = MathAbs(_StopLossPrice - _EnterPrice);
- 				
- 				ulong _R1Ticket = -1, _R2Ticket = -1; 
- 				
- 				if(m_Trade.BuyStop(m_LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 1 * _Move)) {
- 				   _R1Ticket = m_Trade.ResultOrder();
- 				} else {
- 				   Print("Order failed with error #", GetLastError());
- 				}
- 				if(m_Trade.SellStop(m_LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 2 * _Move)) {
- 				   _R2Ticket = m_Trade.ResultOrder();
- 				} else {
- 				   Print("Order failed with error #", GetLastError());
- 				}
- 				
- 				if(_R1Ticket != -1 && _R2Ticket != -1) {
- 				   m_ReggieOrders.Add(new ReggieOrder(ReggieOrder::OrderType::BUY, _R1Ticket, _R2Ticket, _EnterPrice, _EnterPrice, m_LotSize));
- 				} else {
- 				   PrintFormat("Reggie place order failed R1: %lu; R2: %lu", _R1Ticket, _R2Ticket);
- 				
- 				   return(false);
- 				}
- 				
- 				break;
- 			}
- 			case ReggieOrder::OrderType::SELL: {
- 				const double _EnterPrice = iLow(_Symbol, PERIOD_M5, iLowest(_Symbol, PERIOD_M5, MODE_LOW, 5, 1)) - 3 * m_PipValue;
- 				const double _StopLossPrice = Bid + 3 * m_PipValue;
- 				
- 				const double _Move = MathAbs(_StopLossPrice - _EnterPrice);
- 				
- 				ulong _R1Ticket = -1, _R2Ticket = -1; 
- 				
- 				if(m_Trade.SellStop(m_LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice - 1 * _Move)) {
- 				   _R1Ticket = m_Trade.ResultOrder();
- 				} else {
- 				   Print("Order failed with error #", GetLastError());
- 				}
- 				if(m_Trade.SellStop(m_LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice - 2 * _Move)) {
- 				   _R2Ticket = m_Trade.ResultOrder();
- 				} else {
- 				   Print("Order failed with error #", GetLastError());
- 				}
- 				
- 				if(_R1Ticket != -1 && _R2Ticket != -1) {
- 				   m_ReggieOrders.Add(new ReggieOrder(ReggieOrder::OrderType::SELL, _R1Ticket, _R2Ticket, _EnterPrice, _EnterPrice, m_LotSize));
- 				} else {
- 				   PrintFormat("Reggie place order failed R1: %lu; R2: %lu", _R1Ticket, _R2Ticket);
- 				
- 				   return(false);
- 				}
- 				
- 				break;
- 			}
- 		}
- 		
- 		m_OrderTicketPointer = m_OrderTicketPointer > m_ReggieOrders.Total() ? 0 : m_OrderTicketPointer + 1;
- 		
- 		return(true);
+		case ReggieOrder::OrderType::BUY: {
+			const double _EnterPrice = iHigh(_Symbol, PERIOD_M5, iHighest(_Symbol, PERIOD_M5, MODE_HIGH, 5, 1)) + 3 * m_PipValue /*+ (m_PipValue*MarketInfo(_Symbol, MODE_SPREAD))*/;
+			const double _StopLossPrice = Bid - 3 * m_PipValue;
+			
+			const double _Move = MathAbs(_StopLossPrice - _EnterPrice);
+			
+			ulong _R1Ticket = -1, _R2Ticket = -1; 
+			
+			if(m_Trade.BuyStop(m_LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 1 * _Move)) {
+			   _R1Ticket = m_Trade.ResultOrder();
+			} else {
+			   Print("Order failed with error #", GetLastError());
+			}
+			if(m_Trade.SellStop(m_LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 2 * _Move)) {
+			   _R2Ticket = m_Trade.ResultOrder();
+			} else {
+			   Print("Order failed with error #", GetLastError());
+			}
+			
+			if(_R1Ticket != -1 && _R2Ticket != -1) {
+			   m_ReggieOrders.Add(new ReggieOrder(ReggieOrder::OrderType::BUY, _R1Ticket, _R2Ticket, _EnterPrice, _EnterPrice, m_LotSize));
+			} else {
+			   PrintFormat("Reggie place order failed R1: %lu; R2: %lu", _R1Ticket, _R2Ticket);
+			
+			   return(false);
+			}
+			
+			break;
+		}
+		case ReggieOrder::OrderType::SELL: {
+			const double _EnterPrice = iLow(_Symbol, PERIOD_M5, iLowest(_Symbol, PERIOD_M5, MODE_LOW, 5, 1)) - 3 * m_PipValue;
+			const double _StopLossPrice = Bid + 3 * m_PipValue;
+			
+			const double _Move = MathAbs(_StopLossPrice - _EnterPrice);
+			
+			ulong _R1Ticket = -1, _R2Ticket = -1; 
+			
+			if(m_Trade.SellStop(m_LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice - 1 * _Move)) {
+			   _R1Ticket = m_Trade.ResultOrder();
+			} else {
+			   Print("Order failed with error #", GetLastError());
+			}
+			if(m_Trade.SellStop(m_LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice - 2 * _Move)) {
+			   _R2Ticket = m_Trade.ResultOrder();
+			} else {
+			   Print("Order failed with error #", GetLastError());
+			}
+			
+			if(_R1Ticket != -1 && _R2Ticket != -1) {
+			   m_ReggieOrders.Add(new ReggieOrder(ReggieOrder::OrderType::SELL, _R1Ticket, _R2Ticket, _EnterPrice, _EnterPrice, m_LotSize));
+			} else {
+			   PrintFormat("Reggie place order failed R1: %lu; R2: %lu", _R1Ticket, _R2Ticket);
+			
+			   return(false);
+			}
+			
+			break;
+		}
+	}
+	
+	m_OrderTicketPointer = m_OrderTicketPointer > m_ReggieOrders.Total() ? 0 : m_OrderTicketPointer + 1;
+	
+	return(true);
 }
 
 void ReggieOrderManager::AnalyzeOrders(const double p_CriticalValue) {

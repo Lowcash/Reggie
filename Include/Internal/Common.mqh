@@ -47,7 +47,7 @@ int GetNumPipsBetweenPrices(const double p_FirstPrice, const double p_SecondPric
 }
 
 bool IsNewBar(const ENUM_TIMEFRAMES p_TimeFrame) {
-   datetime _PrevTime = NULL, _CurrTime = iTimeMQL4(_Symbol,   p_TimeFrame, 0);
+   datetime _PrevTime = NULL, _CurrTime = iTimeMQL4(_Symbol, p_TimeFrame, 0);
 
    if(!Times.TryGetValue(p_TimeFrame, _PrevTime)) {
       Times.Add(p_TimeFrame, _CurrTime);
@@ -56,6 +56,6 @@ bool IsNewBar(const ENUM_TIMEFRAMES p_TimeFrame) {
    if(!Times.TrySetValue(p_TimeFrame, _CurrTime)) {
       Print("Cannot set new bar value!");
    }
-
+   
    return(_PrevTime != _CurrTime);
 }

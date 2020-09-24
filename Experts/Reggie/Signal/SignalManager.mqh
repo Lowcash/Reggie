@@ -202,7 +202,7 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState) {
 			if(m_CurrMASlow < m_CurrMAMedium && m_CurrMAMedium < m_CurrMAFast) {
 				const double _PrevLow = iLow(_Symbol, PERIOD_M5, 2);
 				
-				// Is the previous candle out off the EMA?
+				// Is the previous candle out/above off the EMA?
 				if(_PrevLow > _PrevEMA) {
 					const double _CurrLow = iLow(_Symbol, PERIOD_M5, 1);
 					
@@ -224,7 +224,7 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState) {
 			if(m_CurrMASlow > m_CurrMAMedium && m_CurrMAMedium > m_CurrMAFast) {
 				const double _PrevHigh = iHigh(_Symbol, PERIOD_M5, 2);
 				
-				// Is the previous candle out off the EMA?
+				// Is the previous candle out off/below the EMA?
 				if(_PrevHigh < _PrevEMA) {
 					const double _CurrHigh = iHigh(_Symbol, PERIOD_M5, 1);
 
