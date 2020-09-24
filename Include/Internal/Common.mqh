@@ -9,7 +9,7 @@
 #include "MQL4Helper.mqh"
 #include <Generic/Hashmap.mqh>
 
-#define ForEachCObject(node, list)  CObject* node; for(node = list.GetFirstNode(); node != NULL; node.Next())
+#define ForEachCObject(node, list) for(CObject* node = list.GetFirstNode(); node != NULL; node = list.GetNextNode())
 
 struct ObjectBuffer {
  private:

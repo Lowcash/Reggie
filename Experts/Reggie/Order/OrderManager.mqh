@@ -127,20 +127,14 @@ void ReggieOrderManager::AnalyzeOrders(const double p_CriticalValue) {
 		const ReggieOrder::OrderType OrderType = ((ReggieOrder*)_ReggieOrder).GetOrderType();
 		
 		if(_R1OrderState == Order::State::PLACED) {
-			if(OrderSelect(_R1Order.GetTicket())) {
+			if(HistoryOrderSelect(_R1Order.GetTicket())) {
 				_R1Order.SetState(Order::State::ABORTED);
 				
 				if(!OrderSelect(_R2Order.GetTicket())) {
 					Print("OrderSelect failed with error #", GetLastError());
 				}
 				
-				MqlTradeRequest _Request;
-			   MqlTradeResult _Result;
-			   
-			   _Request.action = TRADE_ACTION_SLTP;
-			   _Request.sl = _R2Order.GetPrice();
-			   
-			   if(!OrderSend(_Request, _Result)) {
+				if(m_Trade.OrderModify(_R2Order.GetTicket(), OrderGetDouble(ORDER_PRICE_OPEN), _R1Order.GetPrice(), OrderGetDouble(ORDER_TP), (ENUM_ORDER_TYPE_TIME)OrderGetInteger(ORDER_TYPE_TIME), OrderGetInteger(ORDER_TIME_EXPIRATION))) {
 			      Print("OrderModify failed with error #", GetLastError());
 			   }
 			}
@@ -166,24 +160,15 @@ void ReggieOrderManager::AnalyzeOrders(const double p_CriticalValue) {
 		
 		if((OrderType == ReggieOrder::OrderType::BUY && p_CriticalValue > Close[1]) ||
 			(OrderType == ReggieOrder::OrderType::SELL && p_CriticalValue < Close[1])) {
-			MqlTradeRequest _Request;
-			MqlTradeResult _Result;
-			
-			_Request.action = TRADE_ACTION_REMOVE;
-			
 			if(_R1OrderState == Order::State::PENDING) {
-			   _Request.order = _R1Order.GetTicket();
-			
-				if(OrderSend(_Request, _Result)) {
+				if(m_Trade.OrderDelete(_R1Order.GetTicket())) {
 				   _R1Order.SetState(Order::State::ABORTED);
 				} else {
 					Print("Order failed with error #", GetLastError());
 				}
 			}
 			if(_R2OrderState == Order::State::PENDING) {
-			   _Request.order = _R2Order.GetTicket();
-			   
-				if(OrderSend(_Request, _Result)) {
+				if(m_Trade.OrderDelete(_R2Order.GetTicket())) {
 				   _R2Order.SetState(Order::State::ABORTED);
 				} else {
 					Print("Order failed with error #", GetLastError());
