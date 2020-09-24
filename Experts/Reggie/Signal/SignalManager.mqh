@@ -176,9 +176,9 @@ void PullBackManager::UpdatePullBackInfo(const bool p_IsNewPullBack, const datet
 }
 
 void PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendState, const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_MediumMASettings, const MovingAverageSettings &p_SlowMASettings) {
-	m_CurrMAFast = iMAMQL4(_Symbol, p_FastMASettings.m_TimeFrame, p_FastMASettings.m_Period, 0, p_FastMASettings.m_Method, p_FastMASettings.m_AppliedTo, 0);
-	m_CurrMAMedium = iMAMQL4(_Symbol, p_MediumMASettings.m_TimeFrame, p_MediumMASettings.m_Period, 0, p_MediumMASettings.m_Method, p_MediumMASettings.m_AppliedTo, 0);
-	m_CurrMAFast = iMAMQL4(_Symbol, p_SlowMASettings.m_TimeFrame, p_SlowMASettings.m_Period, 0, p_SlowMASettings.m_Method, p_SlowMASettings.m_AppliedTo, 0);
+	m_CurrMAFast = iMAMQL4(_Symbol, p_FastMASettings.m_TimeFrame, p_FastMASettings.m_Period, 0, p_FastMASettings.m_Method, p_FastMASettings.m_AppliedTo, 1);
+	m_CurrMAMedium = iMAMQL4(_Symbol, p_MediumMASettings.m_TimeFrame, p_MediumMASettings.m_Period, 0, p_MediumMASettings.m_Method, p_MediumMASettings.m_AppliedTo, 1);
+	m_CurrMASlow = iMAMQL4(_Symbol, p_SlowMASettings.m_TimeFrame, p_SlowMASettings.m_Period, 0, p_SlowMASettings.m_Method, p_SlowMASettings.m_AppliedTo, 1);
 	
 	PullBack::State _PrevState = m_CurrState;
 	

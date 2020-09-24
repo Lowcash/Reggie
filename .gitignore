@@ -29,7 +29,6 @@ Logs/
 Profiles/Charts/
 Profiles/SymbolSets
 Profiles/Templates/
-Profiles/Tester/Moving Average.set
-Profiles/Tester/Reggie.EURUSD.H1.last_year.000.ini
+Profiles/Tester/
 Scripts/Examples/
 Scripts/UnitTests/

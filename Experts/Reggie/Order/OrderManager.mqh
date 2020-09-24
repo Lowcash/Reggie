@@ -8,6 +8,7 @@
 #property version   "1.00"
 
 #include <Arrays/List.mqh>
+#include <Trade/Trade.mqh>
 
 #include "../../../Include/Internal/MQL4Helper.mqh"
 #include "../../../Include/Internal/Common.mqh"
@@ -21,6 +22,7 @@ class ReggieOrderManager {
  	int m_OrderTicketPointer;
  	
  	CList m_ReggieOrders;
+ 	CTrade m_Trade;
  public:
  	ReggieOrderManager(const double p_LotSize);
  		
@@ -39,64 +41,58 @@ ReggieOrderManager::ReggieOrderManager(const double p_LotSize)
 bool ReggieOrderManager::AddOrder(const ReggieOrder::OrderType p_OrderOrderType) {
    switch(p_OrderOrderType) {
  			case ReggieOrder::OrderType::BUY: {
- 				const double _EnterPrice = iHigh(_Symbol, PERIOD_M5, iHighest(_Symbol, PERIOD_M5, MODE_HIGH, 5)) + 3 * m_PipValue /*+ (m_PipValue*MarketInfo(_Symbol, MODE_SPREAD))*/;
+ 				const double _EnterPrice = iHigh(_Symbol, PERIOD_M5, iHighest(_Symbol, PERIOD_M5, MODE_HIGH, 5, 1)) + 3 * m_PipValue /*+ (m_PipValue*MarketInfo(_Symbol, MODE_SPREAD))*/;
  				const double _StopLossPrice = Bid - 3 * m_PipValue;
  				
  				const double _Move = MathAbs(_StopLossPrice - _EnterPrice);
  				
- 				MqlTradeRequest _R1Request, _R2Request;
- 				MqlTradeResult _R1Result, _R2Result;
+ 				ulong _R1Ticket = -1, _R2Ticket = -1; 
  				
- 				_R1Request.action = TRADE_ACTION_PENDING;
- 				_R1Request.type = ORDER_TYPE_BUY_STOP;
- 				_R1Request.volume = m_LotSize;
- 				_R1Request.stoplimit = _EnterPrice;
- 				_R1Request.sl = _StopLossPrice;
- 				_R1Request.deviation = 10;
- 				_R1Request.tp = _EnterPrice + 1 * _Move;
- 				
- 				_R2Request.action = TRADE_ACTION_PENDING;
- 				_R2Request.type = ORDER_TYPE_BUY_STOP;
- 				_R2Request.volume = m_LotSize;
- 				_R2Request.stoplimit = _EnterPrice;
- 				_R2Request.sl = _StopLossPrice;
- 				_R2Request.deviation = 10;
- 				_R2Request.tp = _EnterPrice + 2 * _Move;
- 				
- 				if(OrderSend(_R1Request, _R1Result) && OrderSend(_R2Request, _R2Result)) {
- 				   m_ReggieOrders.Add(new ReggieOrder(ReggieOrder::OrderType::BUY, _R1Result.order, _R2Result.order, _EnterPrice, _EnterPrice, m_LotSize));
+ 				if(m_Trade.BuyStop(m_LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 1 * _Move)) {
+ 				   _R1Ticket = m_Trade.ResultOrder();
  				} else {
  				   Print("Order failed with error #", GetLastError());
- 				   
+ 				}
+ 				if(m_Trade.SellStop(m_LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 2 * _Move)) {
+ 				   _R2Ticket = m_Trade.ResultOrder();
+ 				} else {
+ 				   Print("Order failed with error #", GetLastError());
+ 				}
+ 				
+ 				if(_R1Ticket != -1 && _R2Ticket != -1) {
+ 				   m_ReggieOrders.Add(new ReggieOrder(ReggieOrder::OrderType::BUY, _R1Ticket, _R2Ticket, _EnterPrice, _EnterPrice, m_LotSize));
+ 				} else {
+ 				   PrintFormat("Reggie place order failed R1: %lu; R2: %lu", _R1Ticket, _R2Ticket);
+ 				
  				   return(false);
  				}
  				
  				break;
  			}
  			case ReggieOrder::OrderType::SELL: {
- 				const double _EnterPrice = iLow(_Symbol, PERIOD_M5, iLowest(_Symbol, PERIOD_M5, MODE_LOW, 5)) - 3 * m_PipValue;
+ 				const double _EnterPrice = iLow(_Symbol, PERIOD_M5, iLowest(_Symbol, PERIOD_M5, MODE_LOW, 5, 1)) - 3 * m_PipValue;
  				const double _StopLossPrice = Bid + 3 * m_PipValue;
  				
  				const double _Move = MathAbs(_StopLossPrice - _EnterPrice);
  				
- 				MqlTradeRequest _R1Request, _R2Request;
- 				MqlTradeResult _R1Result, _R2Result;
+ 				ulong _R1Ticket = -1, _R2Ticket = -1; 
  				
- 				_R1Request.action = _R2Request.action = TRADE_ACTION_PENDING;
- 				_R1Request.type = _R2Request.type = ORDER_TYPE_SELL_STOP;
- 				_R1Request.volume = _R2Request.volume = m_LotSize;
- 				_R1Request.stoplimit = _R2Request.stoplimit = _EnterPrice;
- 				_R1Request.sl = _R2Request.sl = _StopLossPrice;
- 				_R1Request.deviation = _R2Request.deviation = 10;
- 				
- 				_R1Request.tp = _EnterPrice - 1 * _Move;
- 				_R2Request.tp = _EnterPrice - 2 * _Move;
- 				
- 				if(OrderSend(_R1Request, _R1Result) && OrderSend(_R2Request, _R2Result)) {
- 				   m_ReggieOrders.Add(new ReggieOrder(ReggieOrder::OrderType::SELL, _R1Result.order, _R2Result.order, _EnterPrice, _EnterPrice, m_LotSize));
+ 				if(m_Trade.SellStop(m_LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice - 1 * _Move)) {
+ 				   _R1Ticket = m_Trade.ResultOrder();
  				} else {
  				   Print("Order failed with error #", GetLastError());
- 				   
+ 				}
+ 				if(m_Trade.SellStop(m_LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice - 2 * _Move)) {
+ 				   _R2Ticket = m_Trade.ResultOrder();
+ 				} else {
+ 				   Print("Order failed with error #", GetLastError());
+ 				}
+ 				
+ 				if(_R1Ticket != -1 && _R2Ticket != -1) {
+ 				   m_ReggieOrders.Add(new ReggieOrder(ReggieOrder::OrderType::SELL, _R1Ticket, _R2Ticket, _EnterPrice, _EnterPrice, m_LotSize));
+ 				} else {
+ 				   PrintFormat("Reggie place order failed R1: %lu; R2: %lu", _R1Ticket, _R2Ticket);
+ 				
  				   return(false);
  				}
  				
