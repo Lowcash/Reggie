@@ -126,6 +126,30 @@ void ReggieOrderManager::AnalyzeOrders(const double p_CriticalValue) {
 		
 		const ReggieOrder::OrderType OrderType = ((ReggieOrder*)_ReggieOrder).GetOrderType();
 		
+		if((OrderType == ReggieOrder::OrderType::BUY && p_CriticalValue > Close[1]) ||
+			(OrderType == ReggieOrder::OrderType::SELL && p_CriticalValue < Close[1])) {
+			if(_R1OrderState == Order::State::PENDING) {
+				if(m_Trade.OrderDelete(_R1Order.GetTicket())) {
+				   _R1Order.SetState(Order::State::ABORTED);
+				} else {
+					Print("Order failed with error #", GetLastError());
+				}
+			}
+			if(_R2OrderState == Order::State::PENDING) {
+				if(m_Trade.OrderDelete(_R2Order.GetTicket())) {
+				   _R2Order.SetState(Order::State::ABORTED);
+				} else {
+					Print("Order failed with error #", GetLastError());
+				}
+			}
+		}
+		
+		if(_R1OrderState == Order::State::ABORTED && _R2OrderState == Order::State::ABORTED) {
+		   m_ReggieOrders.DeleteCurrent();
+		   
+		   continue;
+		}
+		
 		if(_R1OrderState == Order::State::PLACED) {
 			if(HistoryOrderSelect(_R1Order.GetTicket())) {
 				_R1Order.SetState(Order::State::ABORTED);
@@ -156,28 +180,6 @@ void ReggieOrderManager::AnalyzeOrders(const double p_CriticalValue) {
 			((OrderType == ReggieOrder::OrderType::BUY && Ask > _R2Order.GetPrice()) ||
 			(OrderType == ReggieOrder::OrderType::SELL && Bid < _R2Order.GetPrice()))) {
 			_R2Order.SetState(Order::State::PLACED);
-		}
-		
-		if((OrderType == ReggieOrder::OrderType::BUY && p_CriticalValue > Close[1]) ||
-			(OrderType == ReggieOrder::OrderType::SELL && p_CriticalValue < Close[1])) {
-			if(_R1OrderState == Order::State::PENDING) {
-				if(m_Trade.OrderDelete(_R1Order.GetTicket())) {
-				   _R1Order.SetState(Order::State::ABORTED);
-				} else {
-					Print("Order failed with error #", GetLastError());
-				}
-			}
-			if(_R2OrderState == Order::State::PENDING) {
-				if(m_Trade.OrderDelete(_R2Order.GetTicket())) {
-				   _R2Order.SetState(Order::State::ABORTED);
-				} else {
-					Print("Order failed with error #", GetLastError());
-				}
-			}
-		}
-		
-		if(_R1OrderState == Order::State::ABORTED && _R2OrderState == Order::State::ABORTED) {
-		   m_ReggieOrders.DeleteCurrent();
 		}
 	};
 

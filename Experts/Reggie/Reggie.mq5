@@ -80,22 +80,12 @@ void OnDeinit(const int reason) {
 }
 
 void OnTick() {
-   /*if(_Period == PullBackMA_TimeFrame && _TrendManager.GetCurrState() != Trend::State::INVALID_TREND) {
-      if(IsNewBar(PullBackMA_TimeFrame)) {
-	      _PullBackMA_FastBuffer.GetNewObjectId();
-	   }
-      
-      const double _MA_PrevFast = iMAMQL4(_Symbol, PullBackMA_TimeFrame, PullBackMA_Fast, 0, PullBackMA_Method, PullBackMA_AppliedTo, 1);
-      const double _MA_CurrFast = iMAMQL4(_Symbol, PullBackMA_TimeFrame, PullBackMA_Fast, 0, PullBackMA_Method, PullBackMA_AppliedTo, 0);
-
-		// In case MA is rendering incorrectly, try change Model to "Every tick..."
-		
-      DrawMovingAverage(_PullBackMA_FastBuffer.GetSelecterObjectId(), 0, _MA_PrevFast, _MA_CurrFast, _TrendManager.GetCurrState() == Trend::State::VALID_UPTREND ? PullBackMA_UpClr : PullBackMA_DownClr);
-	}*/
+   const bool _IsNewBar_Trend = IsNewBar(TrendMA_TimeFrame);
+   const bool _IsNewBar_PullBack = IsNewBar(PullBackMA_TimeFrame);
    
    UpdatePredefinedVars();
    
-   if(IsNewBar(TrendMA_TimeFrame)) {
+   if(_IsNewBar_Trend) {
    	_TrendManager.AnalyzeTrend(TrendMA_MinCandles, _FastTrendMASetting, _SlowTrendMASetting);
    	
       if(_TrendManager.GetCurrState() == Trend::State::VALID_UPTREND) {
@@ -118,23 +108,39 @@ void OnTick() {
          DrawTrendMarker(_SelectedTrend.GetSignalID(), _SelectedTrend.GetBeginDateTime(), _SelectedTrend.GetLowestValue(), _SelectedTrend.GetEndDateTime(), _SelectedTrend.GetHighestValue(), TrendMA_DownClr);
       }
    }
-   
+
+   // You can only analyze pullbacks if there is a trend 
    if(_TrendManager.GetCurrState() != Trend::State::INVALID_TREND) {  
    	_ReggieOrderManager.AnalyzeOrders(_PullBackManager.GetCurrMASlow());
    		
-   	if(IsNewBar(PullBackMA_TimeFrame)) {
+   	if(_IsNewBar_PullBack) {
 	      _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState(), _FastPullBackMASetting, _MediumPullBackMASetting, _SlowPullBackMASetting);
 			
 			if(PositionsTotal() == 0 && OrdersTotal() == 0) {
-				if(_PullBackManager.GetCurrState() == PullBack::State::VALID_UPPULLBACK) {
+			   const PullBack::State _PullBackState = _PullBackManager.GetCurrState();
+			
+				if(_PullBackState == PullBack::State::VALID_UPPULLBACK) {
 				   _ReggieOrderManager.AddOrder(ReggieOrder::OrderType::BUY);
 				}
-				if(_PullBackManager.GetCurrState() == PullBack::State::VALID_DOWNPULLBACK) {
+				if(_PullBackState == PullBack::State::VALID_DOWNPULLBACK) {
 				   _ReggieOrderManager.AddOrder(ReggieOrder::OrderType::SELL);
 				}
 			}
       }
    }
+   
+   if(_Period == PullBackMA_TimeFrame && _TrendManager.GetCurrState() != Trend::State::INVALID_TREND) {
+      if(_IsNewBar_PullBack) {
+	      _PullBackMA_FastBuffer.GetNewObjectId();
+	   }
+      
+      const double _MA_PrevFast = iMAMQL4(_Symbol, PullBackMA_TimeFrame, PullBackMA_Fast, 0, PullBackMA_Method, PullBackMA_AppliedTo, 1);
+      const double _MA_CurrFast = iMAMQL4(_Symbol, PullBackMA_TimeFrame, PullBackMA_Fast, 0, PullBackMA_Method, PullBackMA_AppliedTo, 0);
+
+		// In case MA is rendering incorrectly, try change Model to "Every tick..."
+		
+      DrawMovingAverage(_PullBackMA_FastBuffer.GetSelecterObjectId(), 0, _MA_PrevFast, _MA_CurrFast, _TrendManager.GetCurrState() == Trend::State::VALID_UPTREND ? PullBackMA_UpClr : PullBackMA_DownClr);
+	}
 }
 
 //+------------------------------------------------------------------+
