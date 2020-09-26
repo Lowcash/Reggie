@@ -108,7 +108,7 @@ void OnTick() {
          DrawTrendMarker(_SelectedTrend.GetSignalID(), _SelectedTrend.GetBeginDateTime(), _SelectedTrend.GetLowestValue(), _SelectedTrend.GetEndDateTime(), _SelectedTrend.GetHighestValue(), TrendMA_DownClr);
       }
    }
-
+   
    // You can only analyze pullbacks if there is a trend 
    if(_TrendManager.GetCurrState() != Trend::State::INVALID_TREND) {  
    	_ReggieOrderManager.AnalyzeOrders(_PullBackManager.GetCurrMASlow());

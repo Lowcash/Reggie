@@ -121,37 +121,46 @@ void ReggieOrderManager::AnalyzeOrders(const double p_CriticalValue) {
 	   Order* _R1Order = ((ReggieOrder*)_ReggieOrder).GetReggieR1Order();
 	   Order* _R2Order = ((ReggieOrder*)_ReggieOrder).GetReggieR2Order();
 	   
-	   Order::State _R1OrderState = _R1Order.GetState();
-		Order::State _R2OrderState = _R2Order.GetState();
-		
 		const ReggieOrder::OrderType OrderType = ((ReggieOrder*)_ReggieOrder).GetOrderType();
 		
+		// Remove aborted orders first
 		if((OrderType == ReggieOrder::OrderType::BUY && p_CriticalValue > Close[1]) ||
 			(OrderType == ReggieOrder::OrderType::SELL && p_CriticalValue < Close[1])) {
-			if(_R1OrderState == Order::State::PENDING) {
+			
+			uint _R1ResultCode, _R2ResultCode;
+			
+			// Remove them from market
+			if(_R1Order.GetState() == Order::State::PENDING) {
 				if(m_Trade.OrderDelete(_R1Order.GetTicket())) {
-				   _R1Order.SetState(Order::State::ABORTED);
+				   if((_R1ResultCode = m_Trade.ResultRetcode()) == TRADE_RETCODE_DONE) {
+				      _R1Order.SetState(Order::State::ABORTED);
+				   }
 				} else {
 					Print("Order failed with error #", GetLastError());
 				}
 			}
-			if(_R2OrderState == Order::State::PENDING) {
+			if(_R2Order.GetState() == Order::State::PENDING) {
 				if(m_Trade.OrderDelete(_R2Order.GetTicket())) {
-				   _R2Order.SetState(Order::State::ABORTED);
+				   if((_R2ResultCode = m_Trade.ResultRetcode()) == TRADE_RETCODE_DONE) {
+				      _R2Order.SetState(Order::State::ABORTED);
+				   }
 				} else {
 					Print("Order failed with error #", GetLastError());
 				}
 			}
 		}
-		
-		if(_R1OrderState == Order::State::ABORTED && _R2OrderState == Order::State::ABORTED) {
+      
+      // Remove them from list
+		if(_R1Order.GetState() == Order::State::ABORTED && _R2Order.GetState() == Order::State::ABORTED) {
 		   m_ReggieOrders.DeleteCurrent();
 		   
 		   continue;
 		}
-		
-		if(_R1OrderState == Order::State::PLACED) {
+      
+      // Modify R2 order if R1 is done -> takeprofit
+		if(_R1Order.GetState() == Order::State::PLACED) {
 			if(HistoryOrderSelect(_R1Order.GetTicket())) {
+			   // Prepare R1 for removal
 				_R1Order.SetState(Order::State::ABORTED);
 				
 				if(!OrderSelect(_R2Order.GetTicket())) {
@@ -164,19 +173,22 @@ void ReggieOrderManager::AnalyzeOrders(const double p_CriticalValue) {
 			}
 		}
 		
-		if(_R2OrderState == Order::State::PLACED) {
-			if(OrderSelect(_R2Order.GetTicket())) {
+		if(_R2Order.GetState() == Order::State::PLACED) {
+			if(HistoryOrderSelect(_R2Order.GetTicket())) {
+			   // Prepare R2 for removal
 				_R2Order.SetState(Order::State::ABORTED);
 			}
 		}
-			
-		if(_R1OrderState == Order::State::PENDING &&
+	   
+	   // Mark R1 order as placed
+		if(_R1Order.GetState() == Order::State::PENDING &&
 			((OrderType == ReggieOrder::OrderType::BUY && Ask > _R1Order.GetPrice()) ||
 			(OrderType == ReggieOrder::OrderType::SELL && Bid < _R1Order.GetPrice())))  {
 			_R1Order.SetState(Order::State::PLACED);
 		}
-
-		if(_R2OrderState == Order::State::PENDING &&
+		
+      // Mark R2 order as placed
+		if(_R2Order.GetState() == Order::State::PENDING &&
 			((OrderType == ReggieOrder::OrderType::BUY && Ask > _R2Order.GetPrice()) ||
 			(OrderType == ReggieOrder::OrderType::SELL && Bid < _R2Order.GetPrice()))) {
 			_R2Order.SetState(Order::State::PLACED);

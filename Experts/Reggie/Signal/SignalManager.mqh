@@ -197,6 +197,9 @@ void PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendState, const
 PullBack::State PullBackManager::GetState(Trend::State p_TrendState) {
 	const double _PrevEMA = iMAMQL4(_Symbol, PERIOD_M5, 8, 0, MODE_EMA, PRICE_CLOSE, 2);
 	
+	const double _PrevLength = MathAbs((Open[2] / m_PipValue) - (Close[2] / m_PipValue));
+	const double _CurrLength = MathAbs((Open[1] / m_PipValue) - (Close[1] / m_PipValue));
+		      	   
 	switch(p_TrendState) {
 		case Trend::State::VALID_UPTREND: {
 			if(m_CurrMASlow < m_CurrMAMedium && m_CurrMAMedium < m_CurrMAFast) {
@@ -207,13 +210,20 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState) {
 					const double _CurrLow = iLow(_Symbol, PERIOD_M5, 1);
 					
 					// Is the candle wick above fast EMA and the candle below slow EMA?
-					if(_CurrLow < m_CurrMAFast && Close[1] > m_CurrMASlow) {
-						const int _NumPips = GetNumPipsBetweenPrices(_PrevLow, Close[2], m_PipValue);
+					if(_CurrLow < m_CurrMAFast && Close[2] > m_CurrMASlow) {
+						// Is the previous candle longer then current or current is lower then previous candle?
+						if(_PrevLength > _CurrLength || Close[2] > Close[1]) {
+						   const int _NumPips = GetNumPipsBetweenPrices(_PrevLow, _PrevEMA, m_PipValue);
 						
-						// Is the previous candle above the current candle by min. one pip?
-						if(Close[2] > Close[1] && _NumPips >= 1) {
-							return(PullBack::State::VALID_UPPULLBACK);
-						}
+						   // Is one and more pips?
+		      		   if(_NumPips >= 1) {
+		      		      return(PullBack::State::VALID_UPPULLBACK);
+		      		   } else {
+		      		      PrintFormat("Not enought pips for pullback! Result: %d -> %lf %lf", _NumPips, _PrevLow, _PrevEMA);
+		      		   }
+		      	   } else {
+		      	      Print("Trigger candle was not shorter or lower then the current candle -> invalid pullback!");
+		      	   }
 					}
 				}
 		   }
@@ -229,12 +239,19 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState) {
 					const double _CurrHigh = iHigh(_Symbol, PERIOD_M5, 1);
 
 					// Is the candle wick below fast EMA and the candle above slow EMA?
-		      	if(_CurrHigh > m_CurrMAFast && Close[1] < m_CurrMASlow) {
-		      		const int _NumPips = GetNumPipsBetweenPrices(_PrevHigh, Close[2], m_PipValue);
-						
-		      		// Is the previous candle below the current candle by min. one pip?
-		      		if(Close[2] < Close[1] && _NumPips >= 1) {
-		      			return(PullBack::State::VALID_DOWNPULLBACK);
+		      	if(_CurrHigh > m_CurrMAFast && Close[2] < m_CurrMASlow) {
+		      		// Is the previous candle longer then current or current is higher then previous candle?
+		      		if(_PrevLength > _CurrLength || Close[2] < Close[1]) {
+		      		   const int _NumPips = GetNumPipsBetweenPrices(_PrevHigh, _PrevEMA, m_PipValue);
+		      		   
+		      		   // Is one and more pips?
+		      		   if(_NumPips >= 1) {
+		      		      return(PullBack::State::VALID_DOWNPULLBACK);
+		      		   } else {
+		      		      PrintFormat("Not enought pips for pullback! Result: %d -> %lf %lf", _NumPips, _PrevHigh, _PrevEMA);
+		      		   }
+		      	   } else {
+		      	      Print("Trigger candle was not shorter or higher then the current candle -> invalid pullback!");
 		      	   }
 		      	}
 				}

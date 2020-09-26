@@ -7,17 +7,19 @@
 #property link      "https://www.mql5.com"
 
 static datetime Time[];
-static double Close[], Low[];
+static double Open[], Close[], Low[];
 
 static datetime _Time;
 static double Ask, Bid;
 
 void UpdatePredefinedVars() {
    ArraySetAsSeries(Time, true);
+   ArraySetAsSeries(Open, true);
    ArraySetAsSeries(Close, true);
    ArraySetAsSeries(Low, true);
    
    CopyTime(_Symbol, _Period, 0, 100, Time);
+   CopyOpen(_Symbol, _Period, 0, 100, Open);
    CopyClose(_Symbol, _Period, 0, 100, Close);
    CopyLow(_Symbol, _Period, 0, 100, Low);
    
