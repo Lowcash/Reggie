@@ -79,6 +79,12 @@ void OnDeinit(const int reason) {
    
 }
 
+/*void OnTradeTransaction(const MqlTradeTransaction &p_Trans, const MqlTradeRequest &p_Request, const MqlTradeResult &p_Result) {
+   const ENUM_TRADE_TRANSACTION_TYPE _Type = p_Trans.type;
+   
+   Print(EnumToString(_Type));
+}*/
+
 void OnTick() {
    const bool _IsNewBar_Trend = IsNewBar(TrendMA_TimeFrame);
    const bool _IsNewBar_PullBack = IsNewBar(PullBackMA_TimeFrame);
@@ -110,7 +116,7 @@ void OnTick() {
    }
    
    // You can only analyze pullbacks if there is a trend 
-   if(_TrendManager.GetCurrState() != Trend::State::INVALID_TREND) {  
+   if(_TrendManager.GetCurrState() != Trend::State::INVALID_TREND) {
    	_ReggieOrderManager.AnalyzeOrders(_PullBackManager.GetCurrMASlow());
    		
    	if(_IsNewBar_PullBack) {
@@ -141,6 +147,8 @@ void OnTick() {
 		
       DrawMovingAverage(_PullBackMA_FastBuffer.GetSelecterObjectId(), 0, _MA_PrevFast, _MA_CurrFast, _TrendManager.GetCurrState() == Trend::State::VALID_UPTREND ? PullBackMA_UpClr : PullBackMA_DownClr);
 	}
+	
+	_ReggieOrderManager.ShowOrderStateComment();
 }
 
 //+------------------------------------------------------------------+

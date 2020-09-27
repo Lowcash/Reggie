@@ -25,7 +25,8 @@ class ReggieOrderManager {
  	CTrade m_Trade;
  public:
  	ReggieOrderManager(const double p_LotSize);
- 		
+ 	
+ 	void ShowOrderStateComment();
 	void AnalyzeOrders(const double p_CriticalValue);
 	
 	bool AddOrder(const ReggieOrder::OrderType p_OrderOrderType);
@@ -53,7 +54,7 @@ bool ReggieOrderManager::AddOrder(const ReggieOrder::OrderType p_OrderOrderType)
 			} else {
 			   Print("Order failed with error #", GetLastError());
 			}
-			if(m_Trade.SellStop(m_LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 2 * _Move)) {
+			if(m_Trade.BuyStop(m_LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 2 * _Move)) {
 			   _R2Ticket = m_Trade.ResultOrder();
 			} else {
 			   Print("Order failed with error #", GetLastError());
@@ -105,8 +106,8 @@ bool ReggieOrderManager::AddOrder(const ReggieOrder::OrderType p_OrderOrderType)
 	return(true);
 }
 
-void ReggieOrderManager::AnalyzeOrders(const double p_CriticalValue) {
-	Comment("NO_TRADES");
+void ReggieOrderManager::ShowOrderStateComment() {
+   Comment("NO_TRADES");
 	
 	if(m_ReggieOrders.Total() > 0) {
 	   ReggieOrder* _FirstReggieOrder = (ReggieOrder*)m_ReggieOrders.GetFirstNode();
@@ -116,7 +117,9 @@ void ReggieOrderManager::AnalyzeOrders(const double p_CriticalValue) {
 		
 		Comment(StringFormat("R1: %s; R2: %s", EnumToString(_R1Order.GetState()), EnumToString(_R2Order.GetState())));
 	}
-	
+}
+
+void ReggieOrderManager::AnalyzeOrders(const double p_CriticalValue) {
 	ForEachCObject(_ReggieOrder, m_ReggieOrders) {
 	   Order* _R1Order = ((ReggieOrder*)_ReggieOrder).GetReggieR1Order();
 	   Order* _R2Order = ((ReggieOrder*)_ReggieOrder).GetReggieR2Order();
@@ -125,6 +128,8 @@ void ReggieOrderManager::AnalyzeOrders(const double p_CriticalValue) {
 		
 		// Remove aborted orders first
 		if((OrderType == ReggieOrder::OrderType::BUY && p_CriticalValue > Close[1]) ||
+		   (OrderType == ReggieOrder::OrderType::BUY && p_CriticalValue > Open[1]) ||
+			(OrderType == ReggieOrder::OrderType::SELL && p_CriticalValue < Open[1]) ||
 			(OrderType == ReggieOrder::OrderType::SELL && p_CriticalValue < Close[1])) {
 			
 			uint _R1ResultCode, _R2ResultCode;
@@ -157,13 +162,15 @@ void ReggieOrderManager::AnalyzeOrders(const double p_CriticalValue) {
 		   continue;
 		}
       
+      const ulong _R2Ticket = _R2Order.GetTicket();
+      
       // Modify R2 order if R1 is done -> takeprofit
 		if(_R1Order.GetState() == Order::State::PLACED) {
 			if(HistoryOrderSelect(_R1Order.GetTicket())) {
 			   // Prepare R1 for removal
 				_R1Order.SetState(Order::State::ABORTED);
 				
-				if(!OrderSelect(_R2Order.GetTicket())) {
+				if(!HistoryOrderSelect(_R2Order.GetTicket())) {
 					Print("OrderSelect failed with error #", GetLastError());
 				}
 				
