@@ -9,62 +9,65 @@
 
 #include <../../../Include/Object.mqh>
 
-class Order {
+class Trade {
  public:
- 	enum State { ABORTED = -1, PENDING = 0, PLACED = 1 };
+ 	enum State { ABORTED = -1, PENDING = 0, ORDER = 1, POSITION = 2 };
 
  private:
  	State m_State;
  	ulong m_Ticket;
- 	double m_Price;
  public:
- 	Order(){}
+ 	Trade(){}
  
- 	Order(const ulong p_Ticket, const double p_Price) {
- 		SetOrder(p_Ticket, p_Price);
+ 	Trade(const ulong p_Ticket)
+ 	   : m_State(PENDING) {
+ 		SetTrade(p_Ticket);
  	}
- 		
- 	void SetOrder(const ulong p_Ticket, const double p_Price) {
+ 	
+ 	void SetTrade(const ulong p_Ticket) {
  		m_Ticket = p_Ticket;
- 		m_Price = p_Price;
- 		
- 		m_State = PENDING;
+ 	}
+ 	
+ 	void SetTrade(const State p_State) {
+ 		m_State = p_State;
  	}
  	
  	ulong GetTicket() const { return(m_Ticket); }
- 	double GetPrice() const { return(m_Price); }
  	State GetState() const { return(m_State); }
  	
  	void SetState(const State p_State) { m_State = p_State; }
 };
 
-class ReggieOrder : public CObject {
+class ReggieTrade : public CObject {
  public:
- 	enum OrderType { BUY, SELL };
+ 	enum TradeType { BUY, SELL };
  	
- 	Order m_ReggieR1Order;
- 	Order m_ReggieR2Order;
+ 	Trade m_ReggieR1Trade;
+ 	Trade m_ReggieR2Trade;
  private:
- 	OrderType m_OrderType;
+ 	TradeType m_TradeType;
  public:
- 	ReggieOrder(){};
+ 	ReggieTrade(){};
  	
- 	ReggieOrder(const OrderType p_OrderType, const ulong p_R1Ticket, const ulong p_R2Ticket, const double p_R1Price, const double p_R2Price, const double p_Volume)
- 		: m_OrderType(p_OrderType) {
- 		SetReggieOrder(p_OrderType, p_R1Ticket, p_R2Ticket, p_R1Price, p_R2Price, p_Volume);
+ 	ReggieTrade(const TradeType p_TradeType, const ulong p_R1Ticket, const ulong p_R2Ticket)
+ 		: m_TradeType(p_TradeType) {
+ 		SetReggieTrade(p_TradeType, p_R1Ticket, p_R2Ticket);
  	}
  	
- 	void SetReggieOrder(const OrderType p_OrderType, const ulong p_R1Ticket, const ulong p_R2Ticket, const double p_R1Price, const double p_R2Price, const double p_Volume) {
- 		m_OrderType = p_OrderType;
+ 	void SetReggieTrade(const TradeType p_TradeType, const ulong p_R1Ticket, const ulong p_R2Ticket) {
+ 		m_TradeType = p_TradeType;
  		
- 		m_ReggieR1Order.SetOrder(p_R1Ticket, p_R1Price);
- 		m_ReggieR2Order.SetOrder(p_R2Ticket, p_R2Price);
+ 		m_ReggieR1Trade.SetTrade(p_R1Ticket);
+ 		m_ReggieR2Trade.SetTrade(p_R2Ticket);
  	}
  	
- 	Order *GetReggieR1Order() { return(&m_ReggieR1Order); }
- 	Order *GetReggieR2Order() { return(&m_ReggieR2Order); }
+ 	Trade *GetReggieR1Trade() { return(&m_ReggieR1Trade); }
+ 	Trade *GetReggieR2Trade() { return(&m_ReggieR2Trade); }
  	
- 	OrderType GetOrderType() const { return(m_OrderType); }
+ 	TradeType GetTradeType() const { return(m_TradeType); }
  	
- 	void SetOrderType(const OrderType p_OrderType) { m_OrderType = p_OrderType; }
+ 	void SetR1TradeState(const Trade::State p_TradeState) { m_ReggieR1Trade.SetTrade(p_TradeState); }
+ 	void SetR2TradeState(const Trade::State p_TradeState) { m_ReggieR2Trade.SetTrade(p_TradeState); }
+ 	
+ 	void SetOrderType(const TradeType p_TradeType) { m_TradeType = p_TradeType; }
 };

@@ -67,7 +67,8 @@ ObjectBuffer               _PullBackMA_FastBuffer("PullBackMA_Fast", _PullBackMA
 TrendManager               _TrendManager("TrendManager", _TrendMA_BufferSize);
 PullBackManager				_PullBackManager("PullBackManager", _PullBackMA_BufferSize);
 
-ReggieOrderManager			_ReggieOrderManager(LotSize);
+
+ReggieTradeManager			_ReggieTradeManager(LotSize);
 
 int OnInit() {
    return(INIT_SUCCEEDED);
@@ -79,11 +80,33 @@ void OnDeinit(const int reason) {
    
 }
 
-/*void OnTradeTransaction(const MqlTradeTransaction &p_Trans, const MqlTradeRequest &p_Request, const MqlTradeResult &p_Result) {
-   const ENUM_TRADE_TRANSACTION_TYPE _Type = p_Trans.type;
+void OnTradeTransaction(const MqlTradeTransaction &p_Trans, const MqlTradeRequest &p_Request, const MqlTradeResult &p_Result) {
+   PrintFormat("Orders: %d, Positions: %d", OrdersTotal(), PositionsTotal());
    
-   Print(EnumToString(_Type));
-}*/
+   switch(p_Trans.type) {
+      case TRADE_TRANSACTION_ORDER_ADD: {
+         _ReggieTradeManager.HandleOrderSend(p_Trans.order);
+
+         break;
+      }
+      case TRADE_TRANSACTION_HISTORY_ADD: {
+         if(p_Trans.order_state == ORDER_STATE_CANCELED) {
+            _ReggieTradeManager.HandleOrderDelete(p_Trans.order);
+         }
+
+         break;
+      }
+      case TRADE_TRANSACTION_DEAL_ADD: {
+         if(p_Trans.order_state == ORDER_STATE_STARTED) {
+            _ReggieTradeManager.HandleOrderDelete(p_Trans.order);
+         }
+         
+         _ReggieTradeManager.HandleMakeDeal(p_Trans.order);
+         
+         break;
+      }
+   }
+}
 
 void OnTick() {
    const bool _IsNewBar_Trend = IsNewBar(TrendMA_TimeFrame);
@@ -117,7 +140,7 @@ void OnTick() {
    
    // You can only analyze pullbacks if there is a trend 
    if(_TrendManager.GetCurrState() != Trend::State::INVALID_TREND) {
-   	_ReggieOrderManager.AnalyzeOrders(_PullBackManager.GetCurrMASlow());
+   	_ReggieTradeManager.AnalyzeTrades(_PullBackManager.GetCurrMASlow());
    		
    	if(_IsNewBar_PullBack) {
 	      _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState(), _FastPullBackMASetting, _MediumPullBackMASetting, _SlowPullBackMASetting);
@@ -126,10 +149,10 @@ void OnTick() {
 			   const PullBack::State _PullBackState = _PullBackManager.GetCurrState();
 			
 				if(_PullBackState == PullBack::State::VALID_UPPULLBACK) {
-				   _ReggieOrderManager.AddOrder(ReggieOrder::OrderType::BUY);
+				   _ReggieTradeManager.TryOpenOrder(ReggieTrade::TradeType::BUY, _FastPullBackMASetting.m_TimeFrame);
 				}
 				if(_PullBackState == PullBack::State::VALID_DOWNPULLBACK) {
-				   _ReggieOrderManager.AddOrder(ReggieOrder::OrderType::SELL);
+				   _ReggieTradeManager.TryOpenOrder(ReggieTrade::TradeType::SELL, _FastPullBackMASetting.m_TimeFrame);
 				}
 			}
       }
@@ -148,7 +171,7 @@ void OnTick() {
       DrawMovingAverage(_PullBackMA_FastBuffer.GetSelecterObjectId(), 0, _MA_PrevFast, _MA_CurrFast, _TrendManager.GetCurrState() == Trend::State::VALID_UPTREND ? PullBackMA_UpClr : PullBackMA_DownClr);
 	}
 	
-	_ReggieOrderManager.ShowOrderStateComment();
+	_ReggieTradeManager.ShowOrderStateComment();
 }
 
 //+------------------------------------------------------------------+
