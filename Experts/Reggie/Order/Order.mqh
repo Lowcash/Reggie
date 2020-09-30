@@ -12,7 +12,6 @@
 class Trade {
  public:
  	enum State { ABORTED = -1, PENDING = 0, ORDER = 1, POSITION = 2 };
-
  private:
  	State m_State;
  	ulong m_Ticket;

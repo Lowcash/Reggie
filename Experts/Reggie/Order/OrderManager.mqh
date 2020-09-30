@@ -104,7 +104,7 @@ bool ReggieTradeManager::TryOpenOrder(const ReggieTrade::TradeType p_OrderTradeT
 	   m_ReggieTrades.Add(new ReggieTrade(p_OrderTradeType, _R1Ticket, _R2Ticket));
 	}
 
-	return(_R1Ticket != -1 /*&& _R2Ticket != -1*/);
+	return(_R1Ticket != -1 && _R2Ticket != -1);
 }
 
 void ReggieTradeManager::HandleOrderSend(const ulong p_Ticket) {
@@ -137,6 +137,15 @@ void ReggieTradeManager::HandleMakeDeal(const ulong p_Ticket) {
 	   if(_R1Trade.GetTicket() == p_Ticket) {
 	      if(_R1Trade.GetState() == Trade::State::POSITION) {
 	         ((ReggieTrade*)_ReggieTrade).SetR1TradeState(Trade::State::ABORTED);
+	         
+	         // Modify R2 position, because R1 is done (takeprofit)
+	         if(PositionSelectByTicket(_R2Trade.GetTicket())) {
+   	         if(TradeFunc.PositionModify(_R2Trade.GetTicket(), PositionGetDouble(POSITION_PRICE_OPEN), PositionGetDouble(POSITION_TP))) {
+   				   const uint _R2ResultCode = TradeFunc.ResultRetcode();
+   				} else {
+   				   Print("PositionModify failed with error #", GetLastError());
+   				} 
+	         }
 	      } else {
 	         ((ReggieTrade*)_ReggieTrade).SetR1TradeState(Trade::State::POSITION);
 	      }
@@ -169,6 +178,13 @@ void ReggieTradeManager::AnalyzeTrades(const double p_CriticalValue) {
 	   Trade* _R1Trade = ((ReggieTrade*)_ReggieTrade).GetReggieR1Trade();
 	   Trade* _R2Trade = ((ReggieTrade*)_ReggieTrade).GetReggieR2Trade();
 	   
+	   // Remove them from list
+		if(_R1Trade.GetState() == Trade::State::ABORTED && _R2Trade.GetState() == Trade::State::ABORTED) {
+		   m_ReggieTrades.DeleteCurrent();
+		   
+		   continue;
+		}
+		
 		const ReggieTrade::TradeType TradeType = ((ReggieTrade*)_ReggieTrade).GetTradeType();
 		
 		// Remove aborted orders first
@@ -195,49 +211,5 @@ void ReggieTradeManager::AnalyzeTrades(const double p_CriticalValue) {
 				}
 			}
 		}
-      
-      // Remove them from list
-		if(_R1Trade.GetState() == Trade::State::ABORTED && _R2Trade.GetState() == Trade::State::ABORTED) {
-		   m_ReggieTrades.DeleteCurrent();
-		   
-		   continue;
-		}
-      
-      // Modify R2 order if R1 is done -> takeprofit
-//		if(_R1Trade.GetState() == Trade::State::ORDER) { 
-//			if(HistoryOrderGetInteger(_R1Trade.GetTicket(), ORDER_STATE) != ORDER_STATE_FILLED) {
-//			   // Prepare R1 for removal
-//				_R1Trade.SetState(Trade::State::ABORTED);
-//				
-//				if(HistoryOrderSelect(_R2Trade.GetTicket())) {
-//				   if(Trade.OrderModify(_R2Trade.GetTicket(), OrderGetDouble(ORDER_PRICE_OPEN), 0.0/*_R1Trade.GetPrice()*/, OrderGetDouble(ORDER_TP), (ENUM_ORDER_TYPE_TIME)OrderGetInteger(ORDER_TYPE_TIME), OrderGetInteger(ORDER_TIME_EXPIRATION))) {
-//   			      Print("OrderModify failed with error #", GetLastError());
-//   			   }
-//			   } else {
-//					Print("OrderSelect failed with error #", GetLastError());
-//				}
-//			}
-//		}
-//		
-//		if(_R2Trade.GetState() == Trade::State::ORDER) {
-//			if(HistoryOrderGetInteger(_R2Trade.GetTicket(), ORDER_STATE) != ORDER_STATE_FILLED) {
-//			   // Prepare R2 for removal
-//				_R2Trade.SetState(Trade::State::ABORTED);
-//			}
-//		}
-	   
-//	   // Mark R1 order as placed
-//		if(_R1Trade.GetState() == Order::State::PENDING &&
-//			((TradeType == ReggieTrade::TradeType::BUY && Ask > _R1Trade.GetPrice()) ||
-//			(TradeType == ReggieTrade::TradeType::SELL && Bid < _R1Trade.GetPrice())))  {
-//			_R1Trade.SetState(Order::State::PLACED);
-//		}
-//		
-//      // Mark R2 order as placed
-//		if(_R2Order.GetState() == Order::State::PENDING &&
-//			((TradeType == ReggieTrade::TradeType::BUY && Ask > _R2Order.GetPrice()) ||
-//			(TradeType == ReggieTrade::TradeType::SELL && Bid < _R2Order.GetPrice()))) {
-//			_R2Order.SetState(Order::State::PLACED);
-//		}
 	};
 }
