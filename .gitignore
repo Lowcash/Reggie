@@ -26,10 +26,13 @@ Include/Trade/
 Include/WinAPI/
 Indicators/Examples/
 Logs/
+Profiles/Reggie.set
 Profiles/Charts/
-Profiles/SymbolSets
-Profiles/Templates/
+Profiles/SymbolSets/
 Profiles/Tester/
 Scripts/Examples/
 Scripts/UnitTests/
 Indicators/Market/Smart AutoScroll MT5.ex5
+Profiles/Templates/ADX.tpl
+Profiles/Templates/BollingerBands.tpl
+Profiles/Templates/Momentum.tpl
