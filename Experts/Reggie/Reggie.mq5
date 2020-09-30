@@ -81,7 +81,16 @@ void OnDeinit(const int reason) {
 }
 
 void OnTradeTransaction(const MqlTradeTransaction &p_Trans, const MqlTradeRequest &p_Request, const MqlTradeResult &p_Result) {
-   PrintFormat("Orders: %d, Positions: %d", OrdersTotal(), PositionsTotal());
+   //PrintFormat("Orders: %d, Positions: %d", OrdersTotal(), PositionsTotal());
+   
+   if(HistoryDealSelect(p_Trans.deal)) {
+      Print(HistoryDealGetInteger(p_Trans.deal, DEAL_POSITION_ID));
+   }
+   
+   
+   /*if(PositionSelectByTicket(p_Trans.order)) {
+      Print(PositionGetInteger(POSITION_IDENTIFIER));
+   }*/
    
    switch(p_Trans.type) {
       case TRADE_TRANSACTION_ORDER_ADD: {
@@ -89,22 +98,18 @@ void OnTradeTransaction(const MqlTradeTransaction &p_Trans, const MqlTradeReques
 
          break;
       }
-      case TRADE_TRANSACTION_HISTORY_ADD: {
+      case TRADE_TRANSACTION_ORDER_DELETE: {
          if(p_Trans.order_state == ORDER_STATE_CANCELED) {
             _ReggieTradeManager.HandleOrderDelete(p_Trans.order);
          }
 
          break;
       }
-      case TRADE_TRANSACTION_DEAL_ADD: {
-         if(p_Trans.order_state == ORDER_STATE_STARTED) {
-            _ReggieTradeManager.HandleOrderDelete(p_Trans.order);
-         }
-         
+      /*case TRADE_TRANSACTION_DEAL_ADD: {
          _ReggieTradeManager.HandleMakeDeal(p_Trans.order);
          
          break;
-      }
+      }*/
    }
 }
 

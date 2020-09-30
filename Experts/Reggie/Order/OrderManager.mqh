@@ -19,7 +19,7 @@ class TradeManager {
  protected:
    double PipValue, LotSize;
    
-   CTrade Trade;
+   CTrade TradeFunc;
  public:
    TradeManager(const double p_LotSize);
 };
@@ -58,16 +58,16 @@ bool ReggieTradeManager::TryOpenOrder(const ReggieTrade::TradeType p_OrderTradeT
 			
 			const double _Move = MathAbs(_StopLossPrice - _EnterPrice);
          
-			if(Trade.BuyStop(LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 1 * _Move, ORDER_TIME_GTC, 0, "R1")) {
-			   if(Trade.ResultRetcode() == TRADE_RETCODE_DONE) {
-			      _R1Ticket = Trade.ResultOrder();
+			if(TradeFunc.BuyStop(LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 1 * _Move, ORDER_TIME_GTC, 0, "R1")) {
+			   if(TradeFunc.ResultRetcode() == TRADE_RETCODE_DONE) {
+			      _R1Ticket = TradeFunc.ResultOrder();
 			   }
 			} else {
 			   Print("Order failed with error #", GetLastError());
 			}
-			if(Trade.BuyStop(LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 2 * _Move, ORDER_TIME_GTC, 0, "R2")) {
-			   if(Trade.ResultRetcode() == TRADE_RETCODE_DONE) {
-			      _R2Ticket = Trade.ResultOrder();
+			if(TradeFunc.BuyStop(LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 2 * _Move, ORDER_TIME_GTC, 0, "R2")) {
+			   if(TradeFunc.ResultRetcode() == TRADE_RETCODE_DONE) {
+			      _R2Ticket = TradeFunc.ResultOrder();
 			   }
 			} else {
 			   Print("Order failed with error #", GetLastError());
@@ -81,16 +81,16 @@ bool ReggieTradeManager::TryOpenOrder(const ReggieTrade::TradeType p_OrderTradeT
 			
 			const double _Move = MathAbs(_StopLossPrice - _EnterPrice);
 			
-			if(Trade.SellStop(LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice - 1 * _Move, ORDER_TIME_GTC, 0, "R1")) {
-			   if(Trade.ResultRetcode() == TRADE_RETCODE_DONE) {
-			      _R1Ticket = Trade.ResultOrder();
+			if(TradeFunc.SellStop(LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice - 1 * _Move, ORDER_TIME_GTC, 0, "R1")) {
+			   if(TradeFunc.ResultRetcode() == TRADE_RETCODE_DONE) {
+			      _R1Ticket = TradeFunc.ResultOrder();
 			   }
 			} else {
 			   Print("Order failed with error #", GetLastError());
 			}
-			if(Trade.SellStop(LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice - 2 * _Move, ORDER_TIME_GTC, 0, "R2")) {
-			   if(Trade.ResultRetcode() == TRADE_RETCODE_DONE) {
-			      _R2Ticket = Trade.ResultOrder();
+			if(TradeFunc.SellStop(LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice - 2 * _Move, ORDER_TIME_GTC, 0, "R2")) {
+			   if(TradeFunc.ResultRetcode() == TRADE_RETCODE_DONE) {
+			      _R2Ticket = TradeFunc.ResultOrder();
 			   }
 			} else {
 			   Print("Order failed with error #", GetLastError());
@@ -104,7 +104,7 @@ bool ReggieTradeManager::TryOpenOrder(const ReggieTrade::TradeType p_OrderTradeT
 	   m_ReggieTrades.Add(new ReggieTrade(p_OrderTradeType, _R1Ticket, _R2Ticket));
 	}
 
-	return(_R1Ticket != -1 && _R2Ticket != -1);
+	return(_R1Ticket != -1 /*&& _R2Ticket != -1*/);
 }
 
 void ReggieTradeManager::HandleOrderSend(const ulong p_Ticket) {
@@ -135,10 +135,18 @@ void ReggieTradeManager::HandleMakeDeal(const ulong p_Ticket) {
       Trade* _R2Trade = ((ReggieTrade*)_ReggieTrade).GetReggieR2Trade();
       
 	   if(_R1Trade.GetTicket() == p_Ticket) {
-	      ((ReggieTrade*)_ReggieTrade).SetR1TradeState(Trade::State::POSITION);
+	      if(_R1Trade.GetState() == Trade::State::POSITION) {
+	         ((ReggieTrade*)_ReggieTrade).SetR1TradeState(Trade::State::ABORTED);
+	      } else {
+	         ((ReggieTrade*)_ReggieTrade).SetR1TradeState(Trade::State::POSITION);
+	      }
 	   }
 	   if(_R2Trade.GetTicket() == p_Ticket) {
-	      ((ReggieTrade*)_ReggieTrade).SetR2TradeState(Trade::State::POSITION);
+	      if(_R2Trade.GetState() == Trade::State::POSITION) {
+	         ((ReggieTrade*)_ReggieTrade).SetR2TradeState(Trade::State::ABORTED);
+	      } else {
+	         ((ReggieTrade*)_ReggieTrade).SetR2TradeState(Trade::State::POSITION);
+	      }
 	   }
    }
 }
@@ -173,15 +181,15 @@ void ReggieTradeManager::AnalyzeTrades(const double p_CriticalValue) {
 			
 			// Remove them from market
 			if(_R1Trade.GetState() == Trade::State::ORDER) {
-				if(Trade.OrderDelete(_R1Trade.GetTicket())) {
-				   _R1ResultCode = Trade.ResultRetcode();
+				if(TradeFunc.OrderDelete(_R1Trade.GetTicket())) {
+				   _R1ResultCode = TradeFunc.ResultRetcode();
 				} else {
 					Print("Order failed with error #", GetLastError());
 				}
 			}
 			if(_R2Trade.GetState() == Trade::State::ORDER) {
-				if(Trade.OrderDelete(_R2Trade.GetTicket())) {
-				   _R2ResultCode = Trade.ResultRetcode();
+				if(TradeFunc.OrderDelete(_R2Trade.GetTicket())) {
+				   _R2ResultCode = TradeFunc.ResultRetcode();
 				} else {
 					Print("Order failed with error #", GetLastError());
 				}
