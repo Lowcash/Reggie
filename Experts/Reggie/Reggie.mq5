@@ -150,9 +150,9 @@ void OnTick() {
    	_ReggieTradeManager.AnalyzeTrades(_PullBackManager.GetCurrMASlow());
    		
    	if(_IsNewBar_PullBack) {
-	      _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState(), _FastPullBackMASetting, _MediumPullBackMASetting, _SlowPullBackMASetting);
-			
 			if(PositionsTotal() == 0 && OrdersTotal() == 0) {
+			   _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState(), _FastPullBackMASetting, _MediumPullBackMASetting, _SlowPullBackMASetting);
+			   
 			   const PullBack::State _PullBackState = _PullBackManager.GetCurrState();
 			
 				if(_PullBackState == PullBack::State::VALID_UPPULLBACK) {
