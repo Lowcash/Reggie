@@ -161,16 +161,16 @@ void ReggieTradeManager::HandleMakeDeal(const ulong p_Ticket) {
 }
 
 void ReggieTradeManager::ShowOrderStateComment() {
-   Comment("NO_TRADES");
+   string _Comment = m_ReggieTrades.Total() > 0 ? "" : "NO_TRADES";
    
-	if(m_ReggieTrades.Total() > 0) {
-	   ReggieTrade* _FirstReggieTrade = (ReggieTrade*)m_ReggieTrades.GetFirstNode();
+   ForEachCObject(_ReggieTrade, m_ReggieTrades) {
+      Trade* _R1Trade = ((ReggieTrade*)_ReggieTrade).GetReggieR1Trade();
+	   Trade* _R2Trade = ((ReggieTrade*)_ReggieTrade).GetReggieR2Trade();
 	   
-	   Trade* _R1Trade = _FirstReggieTrade.GetReggieR1Trade();
-	   Trade* _R2Trade = _FirstReggieTrade.GetReggieR2Trade();
-		
-		Comment(StringFormat("R1: %s; R2: %s", EnumToString(_R1Trade.GetState()), EnumToString(_R2Trade.GetState())));
-	}
+	   _Comment += StringFormat("R1: %s; R2: %s\n", EnumToString(_R1Trade.GetState()), EnumToString(_R2Trade.GetState()));
+   }
+	
+	Comment(_Comment);
 }
 
 void ReggieTradeManager::AnalyzeTrades(const double p_CriticalValue) {

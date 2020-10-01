@@ -43,8 +43,8 @@ input int                 PullBackMA_MinCandles   = 5;
 color               PullBackMA_UpClr        = clrForestGreen;
 color               PullBackMA_DownClr      = clrCrimson;
 
-input double              LotSize                 = 0.01;
-
+input double        LotSize                 = 0.01;
+input bool          IsUnlimitedOpenPosition = false;
 //+------------------------------------------------------------------+
 //|                                                        Variables |
 //+------------------------------------------------------------------+
@@ -119,6 +119,17 @@ void OnTick() {
    const bool _IsNewBar_Trend = IsNewBar(TrendMA_TimeFrame);
    const bool _IsNewBar_PullBack = IsNewBar(PullBackMA_TimeFrame);
    
+   MqlDateTime _CurrentTime; TimeCurrent(_CurrentTime);
+   
+   const bool _IsTradeableTime = _CurrentTime.hour > 7 && _CurrentTime.hour < 20;
+   
+   if(_IsTradeableTime) {
+      Comment("NO_TRADES");
+      _ReggieTradeManager.ShowOrderStateComment();
+   } else {
+      Comment("NOT_TRADEABLE - NIGHT TIME");
+   }
+   
    UpdatePredefinedVars();
    
    if(_IsNewBar_Trend) {
@@ -152,16 +163,18 @@ void OnTick() {
    	if(_IsNewBar_PullBack) {
    	   _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState(), _FastPullBackMASetting, _MediumPullBackMASetting, _SlowPullBackMASetting);
    	   
-			if(PositionsTotal() == 0 && OrdersTotal() == 0) {
-			   const PullBack::State _PullBackState = _PullBackManager.GetCurrState();
-			
-				if(_PullBackState == PullBack::State::VALID_UPPULLBACK) {
-				   _ReggieTradeManager.TryOpenOrder(ReggieTrade::TradeType::BUY, _FastPullBackMASetting.m_TimeFrame);
-				}
-				if(_PullBackState == PullBack::State::VALID_DOWNPULLBACK) {
-				   _ReggieTradeManager.TryOpenOrder(ReggieTrade::TradeType::SELL, _FastPullBackMASetting.m_TimeFrame);
-				}
-			}
+   	   if(_IsTradeableTime) {
+   	      if(IsUnlimitedOpenPosition || (!IsUnlimitedOpenPosition && PositionsTotal() == 0 && OrdersTotal() == 0) ) {
+   			   const PullBack::State _PullBackState = _PullBackManager.GetCurrState();
+   			
+   				if(_PullBackState == PullBack::State::VALID_UPPULLBACK) {
+   				   _ReggieTradeManager.TryOpenOrder(ReggieTrade::TradeType::BUY, _FastPullBackMASetting.m_TimeFrame);
+   				}
+   				if(_PullBackState == PullBack::State::VALID_DOWNPULLBACK) {
+   				   _ReggieTradeManager.TryOpenOrder(ReggieTrade::TradeType::SELL, _FastPullBackMASetting.m_TimeFrame);
+   				}
+   			}
+   	   }
       }
    }
    
@@ -177,8 +190,6 @@ void OnTick() {
 		
       DrawMovingAverage(_PullBackMA_FastBuffer.GetSelecterObjectId(), 0, _MA_PrevFast, _MA_CurrFast, _TrendManager.GetCurrState() == Trend::State::VALID_UPTREND ? PullBackMA_UpClr : PullBackMA_DownClr);
 	}
-	
-	_ReggieTradeManager.ShowOrderStateComment();
 }
 
 //+------------------------------------------------------------------+
