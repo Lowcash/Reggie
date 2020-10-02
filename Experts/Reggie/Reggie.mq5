@@ -44,7 +44,7 @@ color               PullBackMA_UpClr        = clrForestGreen;
 color               PullBackMA_DownClr      = clrCrimson;
 
 input double        LotSize                 = 0.01;
-input bool          IsUnlimitedOpenPosition = false;
+input bool          IsUnlimitedOpenPosition = true;
 //+------------------------------------------------------------------+
 //|                                                        Variables |
 //+------------------------------------------------------------------+
@@ -116,24 +116,21 @@ void OnTradeTransaction(const MqlTradeTransaction &p_Trans, const MqlTradeReques
 }
 
 void OnTick() {
+   MqlDateTime _CurrentTime; TimeCurrent(_CurrentTime);
+   
+   const bool _IsTradeableTime = _CurrentTime.hour >= 7 && _CurrentTime.hour < 20;
+   
    const bool _IsNewBar_Trend = IsNewBar(TrendMA_TimeFrame);
    const bool _IsNewBar_PullBack = IsNewBar(PullBackMA_TimeFrame);
    
-   MqlDateTime _CurrentTime; TimeCurrent(_CurrentTime);
-   
-   const bool _IsTradeableTime = _CurrentTime.hour > 7 && _CurrentTime.hour < 20;
-   
-   if(_IsTradeableTime) {
-      Comment("NO_TRADES");
-      _ReggieTradeManager.ShowOrderStateComment();
-   } else {
-      Comment("NOT_TRADEABLE - NIGHT TIME");
-   }
+   Comment(_IsTradeableTime ? _ReggieTradeManager.GetOrdersStateInfo() : "NOT_TRADEABLE - NIGHT TIME\n" + _ReggieTradeManager.GetOrdersStateInfo());
    
    UpdatePredefinedVars();
    
    if(_IsNewBar_Trend) {
-   	_TrendManager.AnalyzeTrend(TrendMA_MinCandles, _FastTrendMASetting, _SlowTrendMASetting);
+      _TrendManager.UpdateTrendValues(_FastTrendMASetting, _SlowTrendMASetting);
+      
+   	const Trend::State _TrendState = _TrendManager.AnalyzeTrend(TrendMA_MinCandles, _FastTrendMASetting, _SlowTrendMASetting);
    	
       if(_TrendManager.GetCurrState() == Trend::State::VALID_UPTREND) {
          _MarkersBuffer.GetNewObjectId();
@@ -161,11 +158,11 @@ void OnTick() {
    	_ReggieTradeManager.AnalyzeTrades(_PullBackManager.GetCurrMASlow());
    		
    	if(_IsNewBar_PullBack) {
-   	   _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState(), _FastPullBackMASetting, _MediumPullBackMASetting, _SlowPullBackMASetting);
-   	   
+   	   _PullBackManager.UpdatePullBackValues(_FastPullBackMASetting, _MediumPullBackMASetting, _SlowPullBackMASetting);
+
    	   if(_IsTradeableTime) {
    	      if(IsUnlimitedOpenPosition || (!IsUnlimitedOpenPosition && PositionsTotal() == 0 && OrdersTotal() == 0) ) {
-   			   const PullBack::State _PullBackState = _PullBackManager.GetCurrState();
+   			   const PullBack::State _PullBackState = _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState(), _FastPullBackMASetting);
    			
    				if(_PullBackState == PullBack::State::VALID_UPPULLBACK) {
    				   _ReggieTradeManager.TryOpenOrder(ReggieTrade::TradeType::BUY, _FastPullBackMASetting.m_TimeFrame);

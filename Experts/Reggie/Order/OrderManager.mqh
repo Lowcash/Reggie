@@ -38,9 +38,9 @@ class ReggieTradeManager : public TradeManager {
  	void HandleOrderSend(const ulong p_Ticket);
  	void HandleOrderDelete(const ulong p_Ticket);
  	void HandleMakeDeal(const ulong p_Ticket);
- 	
- 	void ShowOrderStateComment();
 	void AnalyzeTrades(const double p_CriticalValue);
+	
+	string GetOrdersStateInfo();
 	
 	bool TryOpenOrder(const ReggieTrade::TradeType p_TradeType, const ENUM_TIMEFRAMES p_PullBackTimeFrame);
 };
@@ -160,17 +160,17 @@ void ReggieTradeManager::HandleMakeDeal(const ulong p_Ticket) {
    }
 }
 
-void ReggieTradeManager::ShowOrderStateComment() {
-   string _Comment = m_ReggieTrades.Total() > 0 ? "" : "NO_TRADES";
+string ReggieTradeManager::GetOrdersStateInfo() {
+   string _Info = m_ReggieTrades.Total() > 0 ? "" : "NO_TRADES";
    
    ForEachCObject(_ReggieTrade, m_ReggieTrades) {
       Trade* _R1Trade = ((ReggieTrade*)_ReggieTrade).GetReggieR1Trade();
 	   Trade* _R2Trade = ((ReggieTrade*)_ReggieTrade).GetReggieR2Trade();
 	   
-	   _Comment += StringFormat("R1: %s; R2: %s\n", EnumToString(_R1Trade.GetState()), EnumToString(_R2Trade.GetState()));
+	   _Info += StringFormat("R1: %s; R2: %s\n", EnumToString(_R1Trade.GetState()), EnumToString(_R2Trade.GetState()));
    }
 	
-	Comment(_Comment);
+	return(_Info);
 }
 
 void ReggieTradeManager::AnalyzeTrades(const double p_CriticalValue) {

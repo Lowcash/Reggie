@@ -55,8 +55,9 @@ class TrendManager : public SignalManager {
  public:
    TrendManager(const string p_ManagerID = "TrendManager", const int p_MaxTrends = 10);
 	
-	void AnalyzeTrend(const int p_MinCandles, const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_SlowMASettings);
+	void UpdateTrendValues(const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_SlowMASettings);
 	
+	Trend::State AnalyzeTrend(const int p_MinCandles, const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_SlowMASettings);
 	Trend::State GetCurrState() const { return(m_CurrState); }
 	
    Trend* GetSelectedTrend() { return(&m_Trends[GetSignalPointer()]); }
@@ -111,11 +112,13 @@ void TrendManager::UpdateTrendInfo(const bool p_IsNewTrend, const datetime p_Tim
       m_Trends[_SignalPointer].SetEnd(p_Time, p_Value);
 }
 
-void TrendManager::AnalyzeTrend(const int p_MinCandles, const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_SlowMASettings) {
+void TrendManager::UpdateTrendValues(const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_SlowMASettings) {
    m_CurrMAFast = iMAMQL4(_Symbol, p_FastMASettings.m_TimeFrame, p_FastMASettings.m_Period, 0, p_FastMASettings.m_Method, p_FastMASettings.m_AppliedTo, 0);
    m_CurrMASlow = iMAMQL4(_Symbol, p_SlowMASettings.m_TimeFrame, p_SlowMASettings.m_Period, 0, p_SlowMASettings.m_Method, p_SlowMASettings.m_AppliedTo, 0);
-   
-   Trend::State _PrevState = m_CurrState;
+}
+
+Trend::State TrendManager::AnalyzeTrend(const int p_MinCandles, const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_SlowMASettings) {
+   const Trend::State _PrevState = m_CurrState;
 	
    if((m_CurrState = GetState(p_MinCandles, p_FastMASettings, p_SlowMASettings)) != Trend::State::INVALID_TREND) {
       if(_PrevState != m_CurrState) { // Is new Trend?
@@ -124,6 +127,8 @@ void TrendManager::AnalyzeTrend(const int p_MinCandles, const MovingAverageSetti
       
       UpdateTrendInfo(_PrevState != m_CurrState, _Time, Bid);
    }
+   
+   return(m_CurrState);
 }
 
 //+------------------------------------------------------------------+
@@ -143,8 +148,9 @@ class PullBackManager : public SignalManager {
  public:
    PullBackManager(const string p_ManagerID = "TrendManager", const int p_MaxPullBacks = 10);
 	
-	void AnalyzePullBack(const Trend::State p_CurrTrendState, const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_MediumMASettings, const MovingAverageSettings &p_SlowMASettings);
+	void UpdatePullBackValues(const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_MediumMASettings, const MovingAverageSettings &p_SlowMASettings);
 	
+	PullBack::State AnalyzePullBack(const Trend::State p_CurrTrendState, const MovingAverageSettings &p_FastMASettings);
 	PullBack::State GetCurrState() const { return(m_CurrState); }
 	
 	double GetCurrMAFast() const { return(m_CurrMAFast); }
@@ -175,12 +181,14 @@ void PullBackManager::UpdatePullBackInfo(const bool p_IsNewPullBack, const datet
       m_PullBacks[_SignalPointer].SetEnd(p_Time, p_Value);
 }
 
-void PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendState, const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_MediumMASettings, const MovingAverageSettings &p_SlowMASettings) {
-	m_CurrMAFast = iMAMQL4(_Symbol, p_FastMASettings.m_TimeFrame, p_FastMASettings.m_Period, 0, p_FastMASettings.m_Method, p_FastMASettings.m_AppliedTo, 1);
+void PullBackManager::UpdatePullBackValues(const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_MediumMASettings, const MovingAverageSettings &p_SlowMASettings) {
+   m_CurrMAFast = iMAMQL4(_Symbol, p_FastMASettings.m_TimeFrame, p_FastMASettings.m_Period, 0, p_FastMASettings.m_Method, p_FastMASettings.m_AppliedTo, 1);
 	m_CurrMAMedium = iMAMQL4(_Symbol, p_MediumMASettings.m_TimeFrame, p_MediumMASettings.m_Period, 0, p_MediumMASettings.m_Method, p_MediumMASettings.m_AppliedTo, 1);
 	m_CurrMASlow = iMAMQL4(_Symbol, p_SlowMASettings.m_TimeFrame, p_SlowMASettings.m_Period, 0, p_SlowMASettings.m_Method, p_SlowMASettings.m_AppliedTo, 1);
-	
-	PullBack::State _PrevState = m_CurrState;
+}
+
+PullBack::State PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendState, const MovingAverageSettings &p_FastMASettings) {
+	const PullBack::State _PrevState = m_CurrState;
 	
 	if((m_CurrState = GetState(p_CurrTrendState, p_FastMASettings)) != PullBack::State::INVALID_PULLBACK) {
 		if((p_CurrTrendState == Trend::State::VALID_UPTREND && m_CurrState == PullBack::State::VALID_UPPULLBACK) ||
@@ -192,6 +200,8 @@ void PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendState, const
 			UpdatePullBackInfo(_PrevState != m_CurrState, _Time, Bid);
 		}
 	}
+	
+	return(m_CurrState);
 }
 
 PullBack::State PullBackManager::GetState(Trend::State p_TrendState, const MovingAverageSettings &p_MASettings) {
@@ -217,9 +227,11 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState, const Movin
 						
 						   // Is one and more pips?
 		      		   if(_NumPips >= 1) {
+		      		      PrintFormat("Pullback! Low: %lf EMA: %lf ->  Result: %d", _PrevLow, _PrevEMA, _NumPips);
+		      		      
 		      		      return(PullBack::State::VALID_UPPULLBACK);
 		      		   } else {
-		      		      PrintFormat("Not enought pips for pullback! Result: %d -> Low:%lf EMA:%lf", _NumPips, _PrevLow, _PrevEMA);
+		      		      PrintFormat("Not enought pips for pullback! Low: %lf EMA: %lf -> Result: %d", _PrevLow, _PrevEMA, _NumPips);
 		      		   }
 		      	   } else {
 		      	      Print("Trigger candle was not shorter or lower then the previous candle -> invalid pullback!");
@@ -248,9 +260,11 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState, const Movin
 		      		   
 		      		   // Is one and more pips?
 		      		   if(_NumPips >= 1) {
+		      		      PrintFormat("Pullback! High: %lf EMA: %lf ->  Result: %d", _PrevHigh, _PrevEMA, _NumPips);
+		      		      
 		      		      return(PullBack::State::VALID_DOWNPULLBACK);
 		      		   } else {
-		      		      PrintFormat("Not enought pips for pullback! Result: %d -> High:%lf EMA:%lf", _NumPips, _PrevHigh, _PrevEMA);
+		      		      PrintFormat("Not enought pips for pullback! High: %lf EMA: %lf -> Result: %d", _PrevHigh, _PrevEMA, _NumPips);
 		      		   }
 		      	   } else {
 		      	      Print("Trigger candle was not shorter or higher then the previous candle -> invalid pullback!");
