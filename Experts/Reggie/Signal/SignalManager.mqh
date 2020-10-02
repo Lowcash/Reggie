@@ -222,7 +222,7 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState, const Movin
 		      		      PrintFormat("Not enought pips for pullback! Result: %d -> Low:%lf EMA:%lf", _NumPips, _PrevLow, _PrevEMA);
 		      		   }
 		      	   } else {
-		      	      Print("Trigger candle was not shorter or lower then the current candle -> invalid pullback!");
+		      	      Print("Trigger candle was not shorter or lower then the previous candle -> invalid pullback!");
 		      	   }
 					} else {
 					   PrintFormat("Candle wick not above iMA -> invalid pullback! Wick: %lf, iMA: %lf", _PrevLow, _PrevEMA);
@@ -253,7 +253,7 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState, const Movin
 		      		      PrintFormat("Not enought pips for pullback! Result: %d -> High:%lf EMA:%lf", _NumPips, _PrevHigh, _PrevEMA);
 		      		   }
 		      	   } else {
-		      	      Print("Trigger candle was not shorter or higher then the current candle -> invalid pullback!");
+		      	      Print("Trigger candle was not shorter or higher then the previous candle -> invalid pullback!");
 		      	   }
 		      	} else {
 					   PrintFormat("Candle wick not below iMA -> invalid pullback! Wick: %lf, iMA: %lf", _PrevHigh, _PrevEMA);
