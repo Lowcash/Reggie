@@ -8,7 +8,7 @@
 #property version   "1.00"
 
 //+------------------------------------------------------------------+
-struct MovingAverageSettings {
+class MovingAverageSettings {
  public:
 	const ENUM_TIMEFRAMES m_TimeFrame;
 	const ENUM_MA_METHOD m_Method;

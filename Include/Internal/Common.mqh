@@ -33,6 +33,7 @@ struct ObjectBuffer {
 };
 
 static CHashMap<ENUM_TIMEFRAMES, datetime> Times;
+static ENUM_DAY_OF_WEEK DayOfWeek;
 
 double GetForexPipValue() {
    return(_Digits % 2 == 1 ? (_Point * 10) : _Point);
@@ -44,6 +45,20 @@ int GetNumPipsBetweenPrices(const double p_FirstPrice, const double p_SecondPric
          (int)(p_FirstPrice / p_PipValue) - (int)(p_SecondPrice / p_PipValue)
       )
    );
+}
+
+bool IsNewDay(const ENUM_DAY_OF_WEEK p_DayOfWeek) {
+   if(DayOfWeek != p_DayOfWeek) {
+      DayOfWeek = p_DayOfWeek;
+      
+      return(true);
+   }
+   
+   return(false);
+}
+
+bool IsNewWeek(const ENUM_DAY_OF_WEEK p_DayOfWeek) {
+   return(IsNewDay(p_DayOfWeek) && p_DayOfWeek == MONDAY);
 }
 
 bool IsNewBar(const ENUM_TIMEFRAMES p_TimeFrame) {

@@ -43,6 +43,8 @@ void SignalManager::SelectNextSignal(void) {
 
 class TrendManager : public SignalManager {
  private:
+   MovingAverageSettings *m_FastMASettings, *m_SlowMASettings;
+   
  	double m_CurrMAFast, m_CurrMASlow;
  
  	Trend::State m_CurrState;
@@ -51,27 +53,28 @@ class TrendManager : public SignalManager {
    
    void UpdateTrendInfo(const bool p_IsNewTrend, const datetime p_Time, const double p_Value);
     
-   Trend::State GetState(const int p_MinCandles, const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_SlowMASettings);
+   Trend::State GetState(const int p_MinCandles);
  public:
-   TrendManager(const string p_ManagerID = "TrendManager", const int p_MaxTrends = 10);
+   TrendManager(MovingAverageSettings *p_FastMASettings, MovingAverageSettings *p_SlowMASettings, const string p_ManagerID = "TrendManager", const int p_MaxTrends = 10);
 	
-	void UpdateTrendValues(const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_SlowMASettings);
+	void UpdateTrendValues();
 	
-	Trend::State AnalyzeTrend(const int p_MinCandles, const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_SlowMASettings);
+	Trend::State AnalyzeTrend(const int p_MinCandles);
 	Trend::State GetCurrState() const { return(m_CurrState); }
 	
    Trend* GetSelectedTrend() { return(&m_Trends[GetSignalPointer()]); }
 };
 
-TrendManager::TrendManager(const string p_ManagerID, const int p_MaxTrends)
-   : SignalManager(p_ManagerID, p_MaxTrends), m_CurrState(Trend::State::INVALID_TREND) {
-   if(ArrayResize(m_Trends, p_MaxTrends) != -1)
+TrendManager::TrendManager(MovingAverageSettings *p_FastMASettings, MovingAverageSettings *p_SlowMASettings, const string p_ManagerID, const int p_MaxTrends)
+   : SignalManager(p_ManagerID, p_MaxTrends), m_CurrState(Trend::State::INVALID_TREND), m_FastMASettings(p_FastMASettings), m_SlowMASettings(p_SlowMASettings) {
+   if(ArrayResize(m_Trends, p_MaxTrends) != -1) {
       PrintFormat("Trend array initialized succesfully with size %d", GetMaxSignals());
-   else
+   } else {
       Print("Trend array initialization failed with error %", GetLastError());
+   }
 };
 
-Trend::State TrendManager::GetState(const int p_MinCandles, const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_SlowMASettings) {
+Trend::State TrendManager::GetState(const int p_MinCandles) {
    switch(m_CurrState) {
    case Trend::State::VALID_UPTREND:
       if(Bid > m_CurrMASlow) { return(Trend::State::VALID_UPTREND); }
@@ -86,8 +89,8 @@ Trend::State TrendManager::GetState(const int p_MinCandles, const MovingAverageS
 	      double _MA_CurrFast = 0, _MA_CurrSlow = 0;
 	      
 	      for(int i = 1; i <= p_MinCandles && _IsUpTrend && _IsDownTrend; ++i) {
-	         _MA_CurrFast = iMAMQL4(_Symbol, p_FastMASettings.m_TimeFrame, p_FastMASettings.m_Period, 0, p_FastMASettings.m_Method, p_FastMASettings.m_AppliedTo, i);
-	         _MA_CurrSlow = iMAMQL4(_Symbol, p_SlowMASettings.m_TimeFrame, p_SlowMASettings.m_Period, 0, p_SlowMASettings.m_Method, p_SlowMASettings.m_AppliedTo, i);
+	         _MA_CurrFast = iMAMQL4(_Symbol, m_FastMASettings.m_TimeFrame, m_FastMASettings.m_Period, 0, m_FastMASettings.m_Method, m_FastMASettings.m_AppliedTo, i);
+	         _MA_CurrSlow = iMAMQL4(_Symbol, m_SlowMASettings.m_TimeFrame, m_SlowMASettings.m_Period, 0, m_SlowMASettings.m_Method, m_SlowMASettings.m_AppliedTo, i);
 
 	         if(!(Close[i] > _MA_CurrFast && _MA_CurrFast > _MA_CurrSlow)) { _IsUpTrend = false; }
 	         if(!(Close[i] < _MA_CurrFast && _MA_CurrFast < _MA_CurrSlow)) { _IsDownTrend = false; }   
@@ -106,21 +109,22 @@ Trend::State TrendManager::GetState(const int p_MinCandles, const MovingAverageS
 void TrendManager::UpdateTrendInfo(const bool p_IsNewTrend, const datetime p_Time, const double p_Value) {
 	const int _SignalPointer = GetSignalPointer();
 
-   if(p_IsNewTrend)
+   if(p_IsNewTrend) {
       m_Trends[_SignalPointer] = Signal(StringFormat("%s_%d", GetManagerId(), _SignalPointer), p_Time, p_Value);
-   else
+   } else {
       m_Trends[_SignalPointer].SetEnd(p_Time, p_Value);
+   } 
 }
 
-void TrendManager::UpdateTrendValues(const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_SlowMASettings) {
-   m_CurrMAFast = iMAMQL4(_Symbol, p_FastMASettings.m_TimeFrame, p_FastMASettings.m_Period, 0, p_FastMASettings.m_Method, p_FastMASettings.m_AppliedTo, 0);
-   m_CurrMASlow = iMAMQL4(_Symbol, p_SlowMASettings.m_TimeFrame, p_SlowMASettings.m_Period, 0, p_SlowMASettings.m_Method, p_SlowMASettings.m_AppliedTo, 0);
+void TrendManager::UpdateTrendValues() {
+   m_CurrMAFast = iMAMQL4(_Symbol, m_FastMASettings.m_TimeFrame, m_FastMASettings.m_Period, 0, m_FastMASettings.m_Method, m_FastMASettings.m_AppliedTo, 0);
+   m_CurrMASlow = iMAMQL4(_Symbol, m_SlowMASettings.m_TimeFrame, m_SlowMASettings.m_Period, 0, m_SlowMASettings.m_Method, m_SlowMASettings.m_AppliedTo, 0);
 }
 
-Trend::State TrendManager::AnalyzeTrend(const int p_MinCandles, const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_SlowMASettings) {
+Trend::State TrendManager::AnalyzeTrend(const int p_MinCandles) {
    const Trend::State _PrevState = m_CurrState;
 	
-   if((m_CurrState = GetState(p_MinCandles, p_FastMASettings, p_SlowMASettings)) != Trend::State::INVALID_TREND) {
+   if((m_CurrState = GetState(p_MinCandles)) != Trend::State::INVALID_TREND) {
       if(_PrevState != m_CurrState) { // Is new Trend?
          SelectNextSignal();
       } 
@@ -138,19 +142,21 @@ class PullBackManager : public SignalManager {
  	double m_CurrMAFast, m_CurrMAMedium, m_CurrMASlow;
  	double m_PipValue;
  	
+ 	MovingAverageSettings *m_FastMASettings, *m_MediumMASettings, *m_SlowMASettings;
+ 	
  	PullBack::State m_CurrState;
  	
    PullBack m_PullBacks[];
    
    void UpdatePullBackInfo(const bool p_IsNewPullBack, const datetime p_Time, const double p_Value);
    
-   PullBack::State GetState(Trend::State p_TrendState, const MovingAverageSettings &p_MASettings);
+   PullBack::State GetState(Trend::State p_TrendState);
  public:
-   PullBackManager(const string p_ManagerID = "TrendManager", const int p_MaxPullBacks = 10);
+   PullBackManager(MovingAverageSettings *p_FastMASettings, MovingAverageSettings *p_MediumMASettings, MovingAverageSettings *p_SlowMASettings, const string p_ManagerID = "TrendManager", const int p_MaxPullBacks = 10);
 	
-	void UpdatePullBackValues(const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_MediumMASettings, const MovingAverageSettings &p_SlowMASettings);
+	void UpdatePullBackValues();
 	
-	PullBack::State AnalyzePullBack(const Trend::State p_CurrTrendState, const MovingAverageSettings &p_FastMASettings);
+	PullBack::State AnalyzePullBack(const Trend::State p_CurrTrendState);
 	PullBack::State GetCurrState() const { return(m_CurrState); }
 	
 	double GetCurrMAFast() const { return(m_CurrMAFast); }
@@ -160,14 +166,15 @@ class PullBackManager : public SignalManager {
    PullBack* GetSelectedPullBack() { return(&m_PullBacks[GetSignalPointer()]); }
 };
 
-PullBackManager::PullBackManager(const string p_ManagerID, const int p_MaxPullBacks)
-   : SignalManager(p_ManagerID, p_MaxPullBacks) {
+PullBackManager::PullBackManager(MovingAverageSettings *p_FastMASettings, MovingAverageSettings *p_MediumMASettings, MovingAverageSettings *p_SlowMASettings, const string p_ManagerID, const int p_MaxPullBacks)
+   : SignalManager(p_ManagerID, p_MaxPullBacks), m_FastMASettings(p_FastMASettings), m_MediumMASettings(p_MediumMASettings), m_SlowMASettings(p_SlowMASettings) {
    m_PipValue = GetForexPipValue();
 	
-   if(ArrayResize(m_PullBacks, p_MaxPullBacks) != -1)
+   if(ArrayResize(m_PullBacks, p_MaxPullBacks) != -1) {
       PrintFormat("PullBack array initialized succesfully with size %d", GetMaxSignals());
-   else
+   } else {
       Print("PullBack array initialization failed with error %", GetLastError());
+   }
    
    SelectNextSignal();
 };
@@ -175,22 +182,23 @@ PullBackManager::PullBackManager(const string p_ManagerID, const int p_MaxPullBa
 void PullBackManager::UpdatePullBackInfo(const bool p_IsNewPullBack, const datetime p_Time, const double p_Value) {
 	const int _SignalPointer = GetSignalPointer();
 
-   if(p_IsNewPullBack)
+   if(p_IsNewPullBack) {
       m_PullBacks[_SignalPointer] = Signal(StringFormat("%s_%d", GetManagerId(), _SignalPointer), p_Time, p_Value);
-   else
+   } else {
       m_PullBacks[_SignalPointer].SetEnd(p_Time, p_Value);
+   }
 }
 
-void PullBackManager::UpdatePullBackValues(const MovingAverageSettings &p_FastMASettings, const MovingAverageSettings &p_MediumMASettings, const MovingAverageSettings &p_SlowMASettings) {
-   m_CurrMAFast = iMAMQL4(_Symbol, p_FastMASettings.m_TimeFrame, p_FastMASettings.m_Period, 0, p_FastMASettings.m_Method, p_FastMASettings.m_AppliedTo, 1);
-	m_CurrMAMedium = iMAMQL4(_Symbol, p_MediumMASettings.m_TimeFrame, p_MediumMASettings.m_Period, 0, p_MediumMASettings.m_Method, p_MediumMASettings.m_AppliedTo, 1);
-	m_CurrMASlow = iMAMQL4(_Symbol, p_SlowMASettings.m_TimeFrame, p_SlowMASettings.m_Period, 0, p_SlowMASettings.m_Method, p_SlowMASettings.m_AppliedTo, 1);
+void PullBackManager::UpdatePullBackValues() {
+   m_CurrMAFast = iMAMQL4(_Symbol, m_FastMASettings.m_TimeFrame, m_FastMASettings.m_Period, 0, m_FastMASettings.m_Method, m_FastMASettings.m_AppliedTo, 1);
+	m_CurrMAMedium = iMAMQL4(_Symbol, m_MediumMASettings.m_TimeFrame, m_MediumMASettings.m_Period, 0, m_MediumMASettings.m_Method, m_MediumMASettings.m_AppliedTo, 1);
+	m_CurrMASlow = iMAMQL4(_Symbol, m_SlowMASettings.m_TimeFrame, m_SlowMASettings.m_Period, 0, m_SlowMASettings.m_Method, m_SlowMASettings.m_AppliedTo, 1);
 }
 
-PullBack::State PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendState, const MovingAverageSettings &p_FastMASettings) {
+PullBack::State PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendState) {
 	const PullBack::State _PrevState = m_CurrState;
 	
-	if((m_CurrState = GetState(p_CurrTrendState, p_FastMASettings)) != PullBack::State::INVALID_PULLBACK) {
+	if((m_CurrState = GetState(p_CurrTrendState)) != PullBack::State::INVALID_PULLBACK) {
 		if((p_CurrTrendState == Trend::State::VALID_UPTREND && m_CurrState == PullBack::State::VALID_UPPULLBACK) ||
 		(p_CurrTrendState == Trend::State::VALID_DOWNTREND && m_CurrState == PullBack::State::VALID_DOWNPULLBACK)) {
 			if(_PrevState != m_CurrState) { // Is new PullBack?
@@ -204,8 +212,8 @@ PullBack::State PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendS
 	return(m_CurrState);
 }
 
-PullBack::State PullBackManager::GetState(Trend::State p_TrendState, const MovingAverageSettings &p_MASettings) {
-	const double _PrevEMA = iMAMQL4(_Symbol, p_MASettings.m_TimeFrame, p_MASettings.m_Period, 0, p_MASettings.m_Method, p_MASettings.m_AppliedTo, 2);
+PullBack::State PullBackManager::GetState(Trend::State p_TrendState) {
+	const double _PrevEMA = iMAMQL4(_Symbol, m_FastMASettings.m_TimeFrame, m_FastMASettings.m_Period, 0, m_FastMASettings.m_Method, m_FastMASettings.m_AppliedTo, 2);
 	
 	const double _PrevLength = MathAbs((Open[2] / m_PipValue) - (Close[2] / m_PipValue));
 	const double _CurrLength = MathAbs((Open[1] / m_PipValue) - (Close[1] / m_PipValue));
@@ -213,11 +221,11 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState, const Movin
 	switch(p_TrendState) {
 		case Trend::State::VALID_UPTREND: {
 			if(m_CurrMASlow < m_CurrMAMedium && m_CurrMAMedium < m_CurrMAFast) {
-				const double _PrevLow = iLow(_Symbol, p_MASettings.m_TimeFrame, 2);
+				const double _PrevLow = iLow(_Symbol, m_FastMASettings.m_TimeFrame, 2);
 				
 				// Is the previous candle out/above off the iMA?
 				if(_PrevLow > _PrevEMA) {
-					const double _CurrLow = iLow(_Symbol, p_MASettings.m_TimeFrame, 1);
+					const double _CurrLow = iLow(_Symbol, m_FastMASettings.m_TimeFrame, 1);
 					
 					// Is the candle wick above iMA and the candle below slow iMA?
 					if(_CurrLow < m_CurrMAFast && Close[2] > m_CurrMASlow) {
@@ -246,11 +254,11 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState, const Movin
 		}
 		case Trend::State::VALID_DOWNTREND: {
 			if(m_CurrMASlow > m_CurrMAMedium && m_CurrMAMedium > m_CurrMAFast) {
-				const double _PrevHigh = iHigh(_Symbol, p_MASettings.m_TimeFrame, 2);
+				const double _PrevHigh = iHigh(_Symbol, m_FastMASettings.m_TimeFrame, 2);
 				
 				// Is the previous candle out off/below the iMA?
 				if(_PrevHigh < _PrevEMA) {
-					const double _CurrHigh = iHigh(_Symbol, p_MASettings.m_TimeFrame, 1);
+					const double _CurrHigh = iHigh(_Symbol, m_FastMASettings.m_TimeFrame, 1);
 
 					// Is the candle wick below fast iMA and the candle above slow iMA?
 		      	if(_CurrHigh > m_CurrMAFast && Close[2] < m_CurrMASlow) {
