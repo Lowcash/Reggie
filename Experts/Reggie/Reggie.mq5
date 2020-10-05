@@ -20,6 +20,8 @@
 input group             "Base"
 input double        LotSize                 = 0.01;
 input bool          IsUnlimitedOpenPosition = true;
+input double        EquityMaxLoss           = -5.00;
+input double        EquityMaxProfit         = 10.00;
 input int           TradeFrom               = 7;
 input int           TradeTo                 = 20;
 input bool          TradeOnMonday           = true; 
@@ -124,7 +126,8 @@ void OnTradeTransaction(const MqlTradeTransaction &p_Trans, const MqlTradeReques
    }
 }
 
-double AccountEquity = 0;
+double AccountEquity = DBL_MIN;
+double AccountEquityPercentage = DBL_MIN;
 
 void SetInfoComment(const bool p_IsTradeableDay, const ENUM_DAY_OF_WEEK p_DayOfWeek, const bool p_IsTradeableTime, const string p_OrdersInfo, const string p_AccountInfo) {
    string _Info = "";
@@ -161,7 +164,11 @@ void OnTick() {
    if(_IsNewBar_PullBack) { _PullBackManager.UpdatePullBackValues(); }
    if(_IsNewWeek) { AccountEquity = AccountInfoDouble(ACCOUNT_EQUITY); }
    
-   SetInfoComment(_IsTradeableDay, _DayOfWeek, _IsTradeableTime, _ReggieTradeManager.GetOrdersStateInfo(), DoubleToString((AccountInfoDouble(ACCOUNT_EQUITY) - AccountEquity) / AccountEquity * 100.0, 2));
+   AccountEquityPercentage = (AccountInfoDouble(ACCOUNT_EQUITY) - AccountEquity) / AccountEquity * 100.0;
+   
+   const bool _IsEquityOK = AccountEquityPercentage >= EquityMaxLoss && AccountEquityPercentage < EquityMaxProfit;
+   
+   SetInfoComment(_IsTradeableDay, _DayOfWeek, _IsTradeableTime, _ReggieTradeManager.GetOrdersStateInfo(), DoubleToString(AccountEquityPercentage, 2));
    
    if(_IsNewBar_Trend) {
    	const Trend::State _TrendState = _TrendManager.AnalyzeTrend(TrendMA_MinCandles);
@@ -192,7 +199,7 @@ void OnTick() {
    	_ReggieTradeManager.AnalyzeTrades(_PullBackManager.GetCurrMASlow());
    		
    	if(_IsNewBar_PullBack) {
-   	   if(_IsTradeableDay && _IsTradeableTime) {
+   	   if(_IsTradeableDay && _IsTradeableTime && _IsEquityOK) {
    	      if(IsUnlimitedOpenPosition || (!IsUnlimitedOpenPosition && PositionsTotal() == 0 && OrdersTotal() == 0) ) {
    			   const PullBack::State _PullBackState = _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState());
    			
