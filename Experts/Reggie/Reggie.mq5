@@ -58,6 +58,7 @@ color               PullBackMA_MediumColor  = clrCornflowerBlue;
 color               PullBackMA_FastColor    = clrMediumSeaGreen;
 
 input double        PullBack_MinPips        = 0.5;
+input double        PullBack_PipsTriggerTolerance= 0.1;
 
 color               PullBackMA_UpClr        = clrForestGreen;
 color               PullBackMA_DownClr      = clrCrimson;
@@ -191,7 +192,7 @@ void OnTick() {
    	if(_IsNewBar_PullBack) {
    	   if(_IsTradeableDay && _IsTradeableTime && _IsEquityOK) {
    	      if(IsUnlimitedOpenPosition || (!IsUnlimitedOpenPosition && PositionsTotal() == 0 && OrdersTotal() == 0) ) {
-   			   const PullBack::State _PullBackState = _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState(), PullBack_MinPips);
+   			   const PullBack::State _PullBackState = _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState(), PullBack_MinPips, PullBack_PipsTriggerTolerance);
    			
    				if(_PullBackState == PullBack::State::VALID_UPPULLBACK) {
    				   _ReggieTradeManager.TryOpenOrder(ReggieTrade::TradeType::BUY, _FastPullBackMASettings.m_TimeFrame);
@@ -214,7 +215,7 @@ void OnTick() {
 
 		// In case MA is rendering incorrectly, try change Model to "Every tick..."
 		
-      DrawMovingAverage(_PullBackMA_FastBuffer.GetSelecterObjectId(), 0, _MA_PrevFast, _MA_CurrFast, _TrendManager.GetCurrState() == Trend::State::VALID_UPTREND ? PullBackMA_UpClr : PullBackMA_DownClr);
+      DrawMovingAverage(_PullBackMA_FastBuffer.GetSelecterObjectId(), 1, _MA_PrevFast, _MA_CurrFast, _TrendManager.GetCurrState() == Trend::State::VALID_UPTREND ? PullBackMA_UpClr : PullBackMA_DownClr);
 	}
 }
 
