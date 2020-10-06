@@ -12,6 +12,7 @@
 
 #include "Signal/SignalManager.mqh"
 #include "Order/OrderManager.mqh"
+#include "Account/AccountManager.mqh"
 
 //+------------------------------------------------------------------+
 //|                                                       Properties |
@@ -21,7 +22,9 @@ input group             "Base"
 input double        LotSize                 = 0.01;
 input bool          IsUnlimitedOpenPosition = true;
 input double        EquityMaxLoss           = -5.00;
-input double        EquityMaxProfit         = 10.00;
+input double        EquityMaxProfit         = 10.00; 
+
+input group              "Trade time"
 input int           TradeFrom               = 7;
 input int           TradeTo                 = 20;
 input bool          TradeOnMonday           = true; 
@@ -54,6 +57,8 @@ color               PullBackMA_SlowColor    = clrGold;
 color               PullBackMA_MediumColor  = clrCornflowerBlue;
 color               PullBackMA_FastColor    = clrMediumSeaGreen;
 
+input double        PullBack_MinPips        = 0.5;
+
 color               PullBackMA_UpClr        = clrForestGreen;
 color               PullBackMA_DownClr      = clrCrimson;
 
@@ -80,6 +85,8 @@ TrendManager               _TrendManager(&_FastTrendMASettings, &_SlowTrendMASet
 PullBackManager				_PullBackManager(&_FastPullBackMASettings, &_MediumPullBackMASettings, &_SlowPullBackMASettings, "PullBackManager", _PullBackMA_BufferSize);
 
 ReggieTradeManager			_ReggieTradeManager(LotSize);
+
+AccountManager             _AccountManager();
 
 int OnInit() {
    return(INIT_SUCCEEDED);
@@ -126,31 +133,12 @@ void OnTradeTransaction(const MqlTradeTransaction &p_Trans, const MqlTradeReques
    }
 }
 
-double AccountEquity = DBL_MIN;
-double AccountEquityPercentage = DBL_MIN;
-
-void SetInfoComment(const bool p_IsTradeableDay, const ENUM_DAY_OF_WEEK p_DayOfWeek, const bool p_IsTradeableTime, const string p_OrdersInfo, const string p_AccountInfo) {
-   string _Info = "";
-   
-   if(p_IsTradeableDay) { 
-      if(!p_IsTradeableTime) {
-         StringAdd(_Info, "NOT_TRADEABLE - NIGHT TIME\n");
-      }
-   } else {
-      StringAdd(_Info, StringFormat("NOT_TRADEABLE - %s\n", EnumToString(p_DayOfWeek)));
-   }
-   
-   StringAdd(_Info, p_OrdersInfo);
-   
-   Comment(StringFormat("%s\nWeek balance: %s%%", _Info, p_AccountInfo));
-}
-
 void OnTick() {
    UpdatePredefinedVars();
    
    const bool _IsNewBar_Trend = IsNewBar(TrendMA_TimeFrame);
    const bool _IsNewBar_PullBack = IsNewBar(PullBackMA_TimeFrame);
-   const bool _IsNewWeek = IsNewWeek(_DayOfWeek);
+   const bool _IsNewWeek = IsNewWeek(_DayOfWeek, MONDAY);
    
    const bool _IsTradeableDay = (_DayOfWeek == MONDAY && TradeOnMonday) ||
                                 (_DayOfWeek == TUESDAY && TradeOnTuesday) ||
@@ -158,17 +146,17 @@ void OnTick() {
                                 (_DayOfWeek == THURSDAY && TradeOnThursday) ||
                                 (_DayOfWeek == FRIDAY && TradeOnFriday);
    
-   const bool _IsTradeableTime = _TimeStruct.hour >= TradeFrom && _TimeStruct.hour < TradeTo;
+   const bool _IsTradeableTime = IsValueInRange(_TimeStruct.hour, TradeFrom - 1, TradeTo);
    
    if(_IsNewBar_Trend) { _TrendManager.UpdateTrendValues(); }
    if(_IsNewBar_PullBack) { _PullBackManager.UpdatePullBackValues(); }
-   if(_IsNewWeek) { AccountEquity = AccountInfoDouble(ACCOUNT_EQUITY); }
+   if(_IsNewWeek) { _AccountManager.UpdateAccountValues(); }
    
-   AccountEquityPercentage = (AccountInfoDouble(ACCOUNT_EQUITY) - AccountEquity) / AccountEquity * 100.0;
+   _AccountManager.UpdateAccountBalance();
    
-   const bool _IsEquityOK = AccountEquityPercentage >= EquityMaxLoss && AccountEquityPercentage < EquityMaxProfit;
+   const bool _IsEquityOK = IsValueInRange(_AccountManager.GetAccountEquityPercentage(), EquityMaxLoss, EquityMaxProfit);
    
-   SetInfoComment(_IsTradeableDay, _DayOfWeek, _IsTradeableTime, _ReggieTradeManager.GetOrdersStateInfo(), DoubleToString(AccountEquityPercentage, 2));
+   SetInfoComment(_IsTradeableDay, _DayOfWeek, _IsTradeableTime, _ReggieTradeManager.GetOrdersStateInfo(), DoubleToString(_AccountManager.GetAccountEquityPercentage(), 2));
    
    if(_IsNewBar_Trend) {
    	const Trend::State _TrendState = _TrendManager.AnalyzeTrend(TrendMA_MinCandles);
@@ -201,7 +189,7 @@ void OnTick() {
    	if(_IsNewBar_PullBack) {
    	   if(_IsTradeableDay && _IsTradeableTime && _IsEquityOK) {
    	      if(IsUnlimitedOpenPosition || (!IsUnlimitedOpenPosition && PositionsTotal() == 0 && OrdersTotal() == 0) ) {
-   			   const PullBack::State _PullBackState = _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState());
+   			   const PullBack::State _PullBackState = _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState(), PullBack_MinPips);
    			
    				if(_PullBackState == PullBack::State::VALID_UPPULLBACK) {
    				   _ReggieTradeManager.TryOpenOrder(ReggieTrade::TradeType::BUY, _FastPullBackMASettings.m_TimeFrame);
@@ -226,6 +214,22 @@ void OnTick() {
 		
       DrawMovingAverage(_PullBackMA_FastBuffer.GetSelecterObjectId(), 0, _MA_PrevFast, _MA_CurrFast, _TrendManager.GetCurrState() == Trend::State::VALID_UPTREND ? PullBackMA_UpClr : PullBackMA_DownClr);
 	}
+}
+
+void SetInfoComment(const bool p_IsTradeableDay, const ENUM_DAY_OF_WEEK p_DayOfWeek, const bool p_IsTradeableTime, const string p_OrdersInfo, const string p_AccountInfo) {
+   string _Info = "";
+   
+   if(p_IsTradeableDay) { 
+      if(!p_IsTradeableTime) {
+         StringAdd(_Info, "NOT_TRADEABLE - NIGHT TIME\n");
+      }
+   } else {
+      StringAdd(_Info, StringFormat("NOT_TRADEABLE - %s\n", EnumToString(p_DayOfWeek)));
+   }
+   
+   StringAdd(_Info, p_OrdersInfo);
+   
+   Comment(StringFormat("%s\nWeek balance: %s%%", _Info, p_AccountInfo));
 }
 
 //+------------------------------------------------------------------+

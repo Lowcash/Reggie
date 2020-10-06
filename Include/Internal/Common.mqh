@@ -39,12 +39,19 @@ double GetForexPipValue() {
    return(_Digits % 2 == 1 ? (_Point * 10) : _Point);
 }
 
-int GetNumPipsBetweenPrices(const double p_FirstPrice, const double p_SecondPrice, const double p_PipValue) {
+double GetNumPipsBetweenPrices(const double p_FirstPrice, const double p_SecondPrice, const double p_PipValue) {
    return(
-      MathAbs(
-         (int)(p_FirstPrice / p_PipValue) - (int)(p_SecondPrice / p_PipValue)
-      )
+      NormalizeDouble(MathAbs(
+         (int)((p_FirstPrice / (p_PipValue) * 100)) - (int)((p_SecondPrice / (p_PipValue) * 100))
+      ) / 100.0, 2)
    );
+}
+
+bool IsValueInRange(const double p_Value, const double p_Begin, const double p_End) {
+   const double _LowerValue = MathMin(p_Begin, p_End);
+   const double _HigherValue = MathMax(p_Begin, p_End);
+   
+   return(p_Value > _LowerValue && p_Value < _HigherValue);
 }
 
 bool IsNewDay(const ENUM_DAY_OF_WEEK p_DayOfWeek) {
@@ -57,8 +64,8 @@ bool IsNewDay(const ENUM_DAY_OF_WEEK p_DayOfWeek) {
    return(false);
 }
 
-bool IsNewWeek(const ENUM_DAY_OF_WEEK p_DayOfWeek) {
-   return(IsNewDay(p_DayOfWeek) && p_DayOfWeek == MONDAY);
+bool IsNewWeek(const ENUM_DAY_OF_WEEK p_ActualDayOfWeek, const ENUM_DAY_OF_WEEK p_FirstDayOfWeek) {
+   return(IsNewDay(p_ActualDayOfWeek) && p_ActualDayOfWeek == p_FirstDayOfWeek);
 }
 
 bool IsNewBar(const ENUM_TIMEFRAMES p_TimeFrame) {

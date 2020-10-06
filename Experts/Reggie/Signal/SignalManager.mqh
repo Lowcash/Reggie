@@ -150,13 +150,13 @@ class PullBackManager : public SignalManager {
    
    void UpdatePullBackInfo(const bool p_IsNewPullBack, const datetime p_Time, const double p_Value);
    
-   PullBack::State GetState(Trend::State p_TrendState);
+   PullBack::State GetState(Trend::State p_TrendState, const double p_MinPips);
  public:
    PullBackManager(MovingAverageSettings *p_FastMASettings, MovingAverageSettings *p_MediumMASettings, MovingAverageSettings *p_SlowMASettings, const string p_ManagerID = "TrendManager", const int p_MaxPullBacks = 10);
 	
 	void UpdatePullBackValues();
 	
-	PullBack::State AnalyzePullBack(const Trend::State p_CurrTrendState);
+	PullBack::State AnalyzePullBack(const Trend::State p_CurrTrendState, const double p_MinPips);
 	PullBack::State GetCurrState() const { return(m_CurrState); }
 	
 	double GetCurrMAFast() const { return(m_CurrMAFast); }
@@ -195,10 +195,10 @@ void PullBackManager::UpdatePullBackValues() {
 	m_CurrMASlow = iMAMQL4(_Symbol, m_SlowMASettings.m_TimeFrame, m_SlowMASettings.m_Period, 0, m_SlowMASettings.m_Method, m_SlowMASettings.m_AppliedTo, 1);
 }
 
-PullBack::State PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendState) {
+PullBack::State PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendState, const double p_MinPips) {
 	const PullBack::State _PrevState = m_CurrState;
 	
-	if((m_CurrState = GetState(p_CurrTrendState)) != PullBack::State::INVALID_PULLBACK) {
+	if((m_CurrState = GetState(p_CurrTrendState, p_MinPips)) != PullBack::State::INVALID_PULLBACK) {
 		if((p_CurrTrendState == Trend::State::VALID_UPTREND && m_CurrState == PullBack::State::VALID_UPPULLBACK) ||
 		(p_CurrTrendState == Trend::State::VALID_DOWNTREND && m_CurrState == PullBack::State::VALID_DOWNPULLBACK)) {
 			if(_PrevState != m_CurrState) { // Is new PullBack?
@@ -212,7 +212,7 @@ PullBack::State PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendS
 	return(m_CurrState);
 }
 
-PullBack::State PullBackManager::GetState(Trend::State p_TrendState) {
+PullBack::State PullBackManager::GetState(Trend::State p_TrendState, const double p_MinPips) {
 	const double _PrevEMA = iMAMQL4(_Symbol, m_FastMASettings.m_TimeFrame, m_FastMASettings.m_Period, 0, m_FastMASettings.m_Method, m_FastMASettings.m_AppliedTo, 2);
 	
 	const double _PrevLength = MathAbs((Open[2] / m_PipValue) - (Close[2] / m_PipValue));
@@ -231,10 +231,10 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState) {
 					if(_CurrLow < m_CurrMAFast && Close[2] > m_CurrMASlow) {
 						// Is the previous candle longer then current or current is lower then previous candle?
 						if(_PrevLength > _CurrLength || Close[2] > Close[1]) {
-						   const int _NumPips = GetNumPipsBetweenPrices(_PrevLow, _PrevEMA, m_PipValue);
+						   const double _NumPips = GetNumPipsBetweenPrices(_PrevLow, _PrevEMA, m_PipValue);
 						
 						   // Is one and more pips?
-		      		   if(_NumPips >= 1) {
+		      		   if(_NumPips >= p_MinPips) {
 		      		      PrintFormat("Pullback! Low: %lf EMA: %lf ->  Result: %d", _PrevLow, _PrevEMA, _NumPips);
 		      		      
 		      		      return(PullBack::State::VALID_UPPULLBACK);
@@ -264,10 +264,10 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState) {
 		      	if(_CurrHigh > m_CurrMAFast && Close[2] < m_CurrMASlow) {
 		      		// Is the previous candle longer then current or current is higher then previous candle?
 		      		if(_PrevLength > _CurrLength || Close[2] < Close[1]) {
-		      		   const int _NumPips = GetNumPipsBetweenPrices(_PrevHigh, _PrevEMA, m_PipValue);
+		      		   const double _NumPips = GetNumPipsBetweenPrices(_PrevHigh, _PrevEMA, m_PipValue);
 		      		   
 		      		   // Is one and more pips?
-		      		   if(_NumPips >= 1) {
+		      		   if(_NumPips >= p_MinPips) {
 		      		      PrintFormat("Pullback! High: %lf EMA: %lf ->  Result: %d", _PrevHigh, _PrevEMA, _NumPips);
 		      		      
 		      		      return(PullBack::State::VALID_DOWNPULLBACK);
