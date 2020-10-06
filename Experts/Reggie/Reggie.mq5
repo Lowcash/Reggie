@@ -156,6 +156,8 @@ void OnTick() {
    
    const bool _IsEquityOK = IsValueInRange(_AccountManager.GetAccountEquityPercentage(), EquityMaxLoss, EquityMaxProfit);
    
+   if(_AccountManager.GetAccountEquityPercentage() > EquityMaxProfit) { _ReggieTradeManager.ForceCloseTrades(); }
+   
    SetInfoComment(_IsTradeableDay, _DayOfWeek, _IsTradeableTime, _ReggieTradeManager.GetOrdersStateInfo(), DoubleToString(_AccountManager.GetAccountEquityPercentage(), 2));
    
    if(_IsNewBar_Trend) {

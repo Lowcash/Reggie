@@ -230,7 +230,7 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState, const doubl
 					// Is the candle wick above iMA and the candle below slow iMA?
 					if(_CurrLow < m_CurrMAFast && Close[2] > m_CurrMASlow) {
 						// Is the previous candle longer then current or current is lower then previous candle?
-						if(_PrevLength > _CurrLength || Close[2] > Close[1]) {
+						if(Close[2] > Close[1] || (_PrevLength > _CurrLength && Close[2] > Close[1])) {
 						   const double _NumPips = GetNumPipsBetweenPrices(_PrevLow, _PrevEMA, m_PipValue);
 						
 						   // Is one and more pips?
@@ -244,9 +244,9 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState, const doubl
 		      	   } else {
 		      	      Print("Trigger candle was not shorter or lower then the previous candle -> invalid pullback!");
 		      	   }
-					} else {
-					   PrintFormat("Candle wick not above iMA -> invalid pullback! Wick: %lf, iMA: %lf", _PrevLow, _PrevEMA);
 					}
+				} else {
+				   PrintFormat("Candle wick not out/above iMA -> invalid pullback! Wick: %lf, iMA: %lf", _PrevLow, _PrevEMA);
 				}
 		   }
    
@@ -263,7 +263,7 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState, const doubl
 					// Is the candle wick below fast iMA and the candle above slow iMA?
 		      	if(_CurrHigh > m_CurrMAFast && Close[2] < m_CurrMASlow) {
 		      		// Is the previous candle longer then current or current is higher then previous candle?
-		      		if(_PrevLength > _CurrLength || Close[2] < Close[1]) {
+		      		if(Close[2] < Close[1] || (_PrevLength > _CurrLength && Close[2] < Close[1])) {
 		      		   const double _NumPips = GetNumPipsBetweenPrices(_PrevHigh, _PrevEMA, m_PipValue);
 		      		   
 		      		   // Is one and more pips?
@@ -277,9 +277,9 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState, const doubl
 		      	   } else {
 		      	      Print("Trigger candle was not shorter or higher then the previous candle -> invalid pullback!");
 		      	   }
-		      	} else {
-					   PrintFormat("Candle wick not below iMA -> invalid pullback! Wick: %lf, iMA: %lf", _PrevHigh, _PrevEMA);
-					}
+		      	}
+				} else {
+				   PrintFormat("Candle wick not out/below iMA -> invalid pullback! Wick: %lf, iMA: %lf", _PrevHigh, _PrevEMA);
 				}
 		   }
    

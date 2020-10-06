@@ -39,6 +39,7 @@ class ReggieTradeManager : public TradeManager {
  	void HandleOrderDelete(const ulong p_Ticket);
  	void HandleMakeDeal(const ulong p_Ticket);
 	void AnalyzeTrades(const double p_CriticalValue);
+	void ForceCloseTrades();
 	
 	string GetOrdersStateInfo();
 	
@@ -212,4 +213,43 @@ void ReggieTradeManager::AnalyzeTrades(const double p_CriticalValue) {
 			}
 		}
 	};
+}
+
+void ReggieTradeManager::ForceCloseTrades() {
+   ForEachCObject(_ReggieTrade, m_ReggieTrades) {
+      Trade* _R1Trade = ((ReggieTrade*)_ReggieTrade).GetReggieR1Trade();
+	   Trade* _R2Trade = ((ReggieTrade*)_ReggieTrade).GetReggieR2Trade();
+	   
+	   uint _R1ResultCode, _R2ResultCode;
+	   
+	   if(_R1Trade.GetState() == Trade::State::ORDER) {
+			if(TradeFunc.OrderDelete(_R1Trade.GetTicket())) {
+			   _R1ResultCode = TradeFunc.ResultRetcode();
+			} else {
+				Print("Order delete failed with error #", GetLastError());
+			}
+		}
+		if(_R2Trade.GetState() == Trade::State::ORDER) {
+			if(TradeFunc.OrderDelete(_R2Trade.GetTicket())) {
+			   _R2ResultCode = TradeFunc.ResultRetcode();
+			} else {
+				Print("Order delete failed with error #", GetLastError());
+			}
+		}
+		
+		if(_R1Trade.GetState() == Trade::State::POSITION) {
+			if(TradeFunc.PositionClose(_R1Trade.GetTicket())) {
+			   _R1ResultCode = TradeFunc.ResultRetcode();
+			} else {
+				Print("Position close failed with error #", GetLastError());
+			}
+		}
+		if(_R2Trade.GetState() == Trade::State::POSITION) {
+			if(TradeFunc.PositionClose(_R2Trade.GetTicket())) {
+			   _R2ResultCode = TradeFunc.ResultRetcode();
+			} else {
+				Print("Order close failed with error #", GetLastError());
+			}
+		}
+   }
 }
