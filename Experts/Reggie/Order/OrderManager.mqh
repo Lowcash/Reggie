@@ -60,7 +60,7 @@ bool ReggieTradeManager::TryOpenOrder(const ReggieTrade::TradeType p_OrderTradeT
    
    switch(p_OrderTradeType) {
 		case ReggieTrade::TradeType::BUY: {
-			const double _EnterPrice = iHigh(_Symbol, p_PullBackTimeFrame, iHighest(_Symbol, p_PullBackTimeFrame, MODE_HIGH, 5, 1)) + 3 * PipValue /*+ (m_PipValue*MarketInfo(_Symbol, MODE_SPREAD))*/;
+			const double _EnterPrice = iHigh(_Symbol, p_PullBackTimeFrame, iHighest(_Symbol, p_PullBackTimeFrame, MODE_HIGH, 5, 2)) + 3 * PipValue /*+ (m_PipValue*MarketInfo(_Symbol, MODE_SPREAD))*/;
 			const double _StopLossPrice = iLow(_Symbol, p_PullBackTimeFrame, 1) - 3 * PipValue;
 			
 			const double _Move = MathAbs(_StopLossPrice - _EnterPrice);
@@ -83,7 +83,7 @@ bool ReggieTradeManager::TryOpenOrder(const ReggieTrade::TradeType p_OrderTradeT
 			break;
 		}
 		case ReggieTrade::TradeType::SELL: {
-			const double _EnterPrice = iLow(_Symbol, p_PullBackTimeFrame, iLowest(_Symbol, p_PullBackTimeFrame, MODE_LOW, 5, 1)) - 3 * PipValue;
+			const double _EnterPrice = iLow(_Symbol, p_PullBackTimeFrame, iLowest(_Symbol, p_PullBackTimeFrame, MODE_LOW, 5, 2)) - 3 * PipValue;
 			const double _StopLossPrice = iHigh(_Symbol, p_PullBackTimeFrame, 1) + 3 * PipValue;
 			
 			const double _Move = MathAbs(_StopLossPrice - _EnterPrice);
