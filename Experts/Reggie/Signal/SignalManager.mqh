@@ -140,7 +140,7 @@ Trend::State TrendManager::AnalyzeTrend(const int p_MinCandles) {
 class PullBackManager : public SignalManager {
  private:
  	double m_CurrMAFast, m_CurrMAMedium, m_CurrMASlow;
- 	double m_PipValue;
+ 	double m_PipValue, m_TriggerPipsTolerance, m_PrevMinPipsIMA;
  	
  	MovingAverageSettings *m_FastMASettings, *m_MediumMASettings, *m_SlowMASettings;
  	
@@ -150,13 +150,13 @@ class PullBackManager : public SignalManager {
    
    void UpdatePullBackInfo(const bool p_IsNewPullBack, const datetime p_Time, const double p_Value);
    
-   PullBack::State GetState(Trend::State p_TrendState, const double p_MinPips, const double p_PipsTolerance);
+   PullBack::State GetState(Trend::State p_TrendState);
  public:
-   PullBackManager(MovingAverageSettings *p_FastMASettings, MovingAverageSettings *p_MediumMASettings, MovingAverageSettings *p_SlowMASettings, const string p_ManagerID = "TrendManager", const int p_MaxPullBacks = 10);
+   PullBackManager(MovingAverageSettings *p_FastMASettings, MovingAverageSettings *p_MediumMASettings, MovingAverageSettings *p_SlowMASettings, const double p_TriggerPipsTolerance, const double p_PrevMinPipsIMA, const string p_ManagerID = "TrendManager", const int p_MaxPullBacks = 10);
 	
 	void UpdatePullBackValues();
 	
-	PullBack::State AnalyzePullBack(const Trend::State p_CurrTrendState, const double p_MinPips, const double p_PipsTolerance);
+	PullBack::State AnalyzePullBack(const Trend::State p_CurrTrendState);
 	PullBack::State GetCurrState() const { return(m_CurrState); }
 	
 	double GetCurrMAFast() const { return(m_CurrMAFast); }
@@ -166,8 +166,8 @@ class PullBackManager : public SignalManager {
    PullBack* GetSelectedPullBack() { return(&m_PullBacks[GetSignalPointer()]); }
 };
 
-PullBackManager::PullBackManager(MovingAverageSettings *p_FastMASettings, MovingAverageSettings *p_MediumMASettings, MovingAverageSettings *p_SlowMASettings, const string p_ManagerID, const int p_MaxPullBacks)
-   : SignalManager(p_ManagerID, p_MaxPullBacks), m_FastMASettings(p_FastMASettings), m_MediumMASettings(p_MediumMASettings), m_SlowMASettings(p_SlowMASettings) {
+PullBackManager::PullBackManager(MovingAverageSettings *p_FastMASettings, MovingAverageSettings *p_MediumMASettings, MovingAverageSettings *p_SlowMASettings, const double p_TriggerPipsTolerance, const double p_PrevMinPipsIMA, const string p_ManagerID, const int p_MaxPullBacks)
+   : SignalManager(p_ManagerID, p_MaxPullBacks), m_FastMASettings(p_FastMASettings), m_MediumMASettings(p_MediumMASettings), m_SlowMASettings(p_SlowMASettings), m_TriggerPipsTolerance(p_TriggerPipsTolerance), m_PrevMinPipsIMA(p_PrevMinPipsIMA) {
    m_PipValue = GetForexPipValue();
 	
    if(ArrayResize(m_PullBacks, p_MaxPullBacks) != -1) {
@@ -190,15 +190,15 @@ void PullBackManager::UpdatePullBackInfo(const bool p_IsNewPullBack, const datet
 }
 
 void PullBackManager::UpdatePullBackValues() {
-   m_CurrMAFast = iMAMQL4(_Symbol, m_FastMASettings.m_TimeFrame, m_FastMASettings.m_Period, 0, m_FastMASettings.m_Method, m_FastMASettings.m_AppliedTo, 1);
-	m_CurrMAMedium = iMAMQL4(_Symbol, m_MediumMASettings.m_TimeFrame, m_MediumMASettings.m_Period, 0, m_MediumMASettings.m_Method, m_MediumMASettings.m_AppliedTo, 1);
-	m_CurrMASlow = iMAMQL4(_Symbol, m_SlowMASettings.m_TimeFrame, m_SlowMASettings.m_Period, 0, m_SlowMASettings.m_Method, m_SlowMASettings.m_AppliedTo, 1);
+   m_CurrMAFast = iMAMQL4(_Symbol, m_FastMASettings.m_TimeFrame, m_FastMASettings.m_Period, 0, m_FastMASettings.m_Method, m_FastMASettings.m_AppliedTo, 0);
+	m_CurrMAMedium = iMAMQL4(_Symbol, m_MediumMASettings.m_TimeFrame, m_MediumMASettings.m_Period, 0, m_MediumMASettings.m_Method, m_MediumMASettings.m_AppliedTo, 0);
+	m_CurrMASlow = iMAMQL4(_Symbol, m_SlowMASettings.m_TimeFrame, m_SlowMASettings.m_Period, 0, m_SlowMASettings.m_Method, m_SlowMASettings.m_AppliedTo, 0);
 }
 
-PullBack::State PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendState, const double p_MinPips, const double p_PipsTolerance) {
+PullBack::State PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendState) {
 	const PullBack::State _PrevState = m_CurrState;
 	
-	if((m_CurrState = GetState(p_CurrTrendState, p_MinPips, p_PipsTolerance)) != PullBack::State::INVALID_PULLBACK) {
+	if((m_CurrState = GetState(p_CurrTrendState)) != PullBack::State::INVALID_PULLBACK) {
 		if((p_CurrTrendState == Trend::State::VALID_UPTREND && m_CurrState == PullBack::State::VALID_UPPULLBACK) ||
 		(p_CurrTrendState == Trend::State::VALID_DOWNTREND && m_CurrState == PullBack::State::VALID_DOWNPULLBACK)) {
 			if(_PrevState != m_CurrState) { // Is new PullBack?
@@ -212,8 +212,8 @@ PullBack::State PullBackManager::AnalyzePullBack(const Trend::State p_CurrTrendS
 	return(m_CurrState);
 }
 
-PullBack::State PullBackManager::GetState(Trend::State p_TrendState, const double p_MinPips, const double p_PipsTolerance) {
-	const double _PrevIMA = iMAMQL4(_Symbol, m_FastMASettings.m_TimeFrame, m_FastMASettings.m_Period, 0, m_FastMASettings.m_Method, m_FastMASettings.m_AppliedTo, 2);
+PullBack::State PullBackManager::GetState(Trend::State p_TrendState) {
+	const double _PrevFastIMA = iMAMQL4(_Symbol, m_FastMASettings.m_TimeFrame, m_FastMASettings.m_Period, 0, m_FastMASettings.m_Method, m_FastMASettings.m_AppliedTo, 1);
 	
 	const double _PrevLength = MathAbs((Open[2] / m_PipValue) - (Close[2] / m_PipValue));
 	const double _TriggerLength = MathAbs((Open[1] / m_PipValue) - (Close[1] / m_PipValue));
@@ -221,65 +221,71 @@ PullBack::State PullBackManager::GetState(Trend::State p_TrendState, const doubl
 	switch(p_TrendState) {
 		case Trend::State::VALID_UPTREND: {
 			if(m_CurrMASlow < m_CurrMAMedium && m_CurrMAMedium < m_CurrMAFast) {
-				const double _PrevLow = iLow(_Symbol, m_FastMASettings.m_TimeFrame, 2);
-				
-				// Is the previous candle out/above off the iMA?
-				if(_PrevLow > _PrevIMA) {
-					const double _TriggerLow = iLow(_Symbol, m_FastMASettings.m_TimeFrame, 1);
-					
-					// Is the candle wick above iMA and the candle below slow iMA?
-					if((_TriggerLow < m_CurrMAFast || GetNumPipsBetweenPrices(_TriggerLow, m_CurrMAFast, m_PipValue) <= 0.1) && Close[2] > m_CurrMASlow) {
-						// Is the previous candle longer then current or current is lower then previous candle?
-						if((Close[2] > Close[1] || _PrevLength > _TriggerLength) && !(IsBullCandle(2) && IsBullCandle(1))) {
-						   const double _NumPips = GetNumPipsBetweenPrices(_PrevLow, _PrevIMA, m_PipValue);
-						
-						   // Is one and more pips?
-		      		   if(_NumPips >= p_MinPips) {
-		      		      PrintFormat("Pullback! Low: %lf EMA: %lf ->  Result: %d", _PrevLow, _PrevIMA, _NumPips);
-		      		      
+			   const double _TriggerLow = iLow(_Symbol, m_FastMASettings.m_TimeFrame, 1);
+			   
+			   // Is the trigger wick above the fast iMA and the whole candle below the slow iMA?
+				if((_TriggerLow < m_CurrMAFast || GetNumPipsBetweenPrices(_TriggerLow, m_CurrMAFast, m_PipValue) <= m_TriggerPipsTolerance) && Close[1] > m_CurrMASlow) {
+				   const double _PrevLow = iLow(_Symbol, m_FastMASettings.m_TimeFrame, 2);
+				   
+				   // Is the previous candle above the fast iMA?
+				   if(_PrevLow > _PrevFastIMA) {
+				      const double _NumPips = GetNumPipsBetweenPrices(_PrevLow, _PrevFastIMA, m_PipValue);
+				      
+				      // Is valid wick - iMA distance?
+		      		if(_NumPips >= m_PrevMinPipsIMA) {
+		      		
+		      		   // Is there a good shape of previous and trigger candle?
+		      		   if((Close[2] > Close[1] || _PrevLength > _TriggerLength) && !(IsBullCandle(2) && IsBullCandle(1))) {
+		      		      PrintFormat("Valid pullback! Previous candle close: %lf; Trigger candle close: %lf; Previous candle length: %lf; Trigger candle close: %lf", Close[2], Close[1], _PrevLength, _TriggerLength);
+		      		   
 		      		      return(PullBack::State::VALID_UPPULLBACK);
 		      		   } else {
-		      		      PrintFormat("Not enought pips for pullback! Low: %lf EMA: %lf -> Result: %d", _PrevLow, _PrevIMA, _NumPips);
+		      		      Print("Invalid pullback! Wrong previous/trigger candle shape.");
 		      		   }
-		      	   } else {
-		      	      Print("Trigger candle was not shorter or lower then the previous candle -> invalid pullback!");
-		      	   }
-					}
+		      		} else {
+		      		   PrintFormat("Invalid previous candle! Candle wick is too close to iMA! Wick: %lf; Fast iMA: %lf; Num pips: %lf < Min num pips: %lf", _PrevLow, _PrevFastIMA, _NumPips, m_PrevMinPipsIMA);
+		      		}
+				   } else {
+				      PrintFormat("Invalid previous candle! Candle is not above the fast iMA! Wick: %lf; Candle: %lf; Fast iMA: %lf", _PrevLow, Close[2], m_CurrMAFast);
+				   }
 				} else {
-				   PrintFormat("Candle wick not out/above iMA -> invalid pullback! Wick: %lf, iMA: %lf", _PrevLow, _PrevIMA);
+				   PrintFormat("Invalid trigger candle! Wick: %lf; Candle: %lf; Fast iMA: %lf; Slow iMA: %lf", _TriggerLow, Close[1], m_CurrMAFast, m_CurrMASlow);
 				}
 		   }
    
 			break;
 		}
 		case Trend::State::VALID_DOWNTREND: {
-			if(m_CurrMASlow > m_CurrMAMedium && m_CurrMAMedium > m_CurrMAFast) {
-				const double _PrevHigh = iHigh(_Symbol, m_FastMASettings.m_TimeFrame, 2);
-				
-				// Is the previous candle out off/below the iMA?
-				if(_PrevHigh < _PrevIMA) {
-					const double _TriggerHigh = iHigh(_Symbol, m_FastMASettings.m_TimeFrame, 1);
-
-					// Is the candle wick below fast iMA and the candle above slow iMA?
-		      	if((_TriggerHigh > m_CurrMAFast || GetNumPipsBetweenPrices(_TriggerHigh, m_CurrMAFast, m_PipValue) <= 0.1) && Close[2] < m_CurrMASlow) {
-		      		// Is the previous candle longer then current or current is higher then previous candle?
-		      		if((Close[2] < Close[1] || _PrevLength > _TriggerLength) && !(IsBearCandle(2) && IsBearCandle(1))) {
-		      		   const double _NumPips = GetNumPipsBetweenPrices(_PrevHigh, _PrevIMA, m_PipValue);
+		   if(m_CurrMASlow > m_CurrMAMedium && m_CurrMAMedium > m_CurrMAFast) {
+			   const double _TriggerHigh = iHigh(_Symbol, m_FastMASettings.m_TimeFrame, 1);
+			   
+			   // Is the trigger wick below the fast iMA and the whole candle above the slow iMA?
+				if((_TriggerHigh > m_CurrMAFast || GetNumPipsBetweenPrices(_TriggerHigh, m_CurrMAFast, m_PipValue) <= m_TriggerPipsTolerance) && Close[1] < m_CurrMASlow) {
+				   const double _PrevHigh = iHigh(_Symbol, m_FastMASettings.m_TimeFrame, 2);
+				   
+				   // Is the previous candle below the fast iMA?
+				   if(_PrevHigh < _PrevFastIMA) {
+				      const double _NumPips = GetNumPipsBetweenPrices(_PrevHigh, _PrevFastIMA, m_PipValue);
+				      
+				      // Is valid wick - iMA distance?
+		      		if(_NumPips >= m_PrevMinPipsIMA) {
+		      		
+		      		   // Is there a good shape of previous and trigger candle?
+		      		   if((Close[2] < Close[1] || _PrevLength > _TriggerLength) && !(IsBearCandle(2) && IsBearCandle(1))) {
+		      		      PrintFormat("Valid pullback! Previous candle close: %lf; Trigger candle close: %lf; Previous candle length: %lf; Trigger candle close: %lf", Close[2], Close[1], _PrevLength, _TriggerLength);
 		      		   
-		      		   // Is one and more pips?
-		      		   if(_NumPips >= p_MinPips) {
-		      		      PrintFormat("Pullback! High: %lf EMA: %lf ->  Result: %d", _PrevHigh, _PrevIMA, _NumPips);
-		      		      
 		      		      return(PullBack::State::VALID_DOWNPULLBACK);
 		      		   } else {
-		      		      PrintFormat("Not enought pips for pullback! High: %lf EMA: %lf -> Result: %d", _PrevHigh, _PrevIMA, _NumPips);
+		      		      Print("Invalid pullback! Wrong previous/trigger candle shape.");
 		      		   }
-		      	   } else {
-		      	      Print("Trigger candle was not shorter or higher then the previous candle -> invalid pullback!");
-		      	   }
-		      	}
+		      		} else {
+		      		   PrintFormat("Invalid previous candle! Candle wick is too close to iMA! Wick: %lf; Fast iMA: %lf; Num pips: %lf < Min num pips: %lf", _PrevHigh, _PrevFastIMA, _NumPips, m_PrevMinPipsIMA);
+		      		}
+				   } else {
+				      PrintFormat("Invalid previous candle! Candle is not below the fast iMA! Wick: %lf; Candle: %lf; Fast iMA: %lf", _PrevHigh, Close[2], m_CurrMAFast);
+				   }
 				} else {
-				   PrintFormat("Candle wick not out/below iMA -> invalid pullback! Wick: %lf, iMA: %lf", _PrevHigh, _PrevIMA);
+				   PrintFormat("Invalid trigger candle! Wick: %lf; Candle: %lf; Fast iMA: %lf; Slow iMA: %lf", _TriggerHigh, Close[1], m_CurrMAFast, m_CurrMASlow);
 				}
 		   }
    

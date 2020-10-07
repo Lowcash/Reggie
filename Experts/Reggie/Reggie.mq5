@@ -89,7 +89,7 @@ const int                  _PullBackMA_BufferSize  = 999999;
 ObjectBuffer               _PullBackMA_FastBuffer("PullBackMA_Fast", _PullBackMA_BufferSize);
 
 TrendManager               _TrendManager(&_FastTrendMASettings, &_SlowTrendMASettings, "TrendManager", _TrendMA_BufferSize);
-PullBackManager				_PullBackManager(&_FastPullBackMASettings, &_MediumPullBackMASettings, &_SlowPullBackMASettings, "PullBackManager", _PullBackMA_BufferSize);
+PullBackManager				_PullBackManager(&_FastPullBackMASettings, &_MediumPullBackMASettings, &_SlowPullBackMASettings, PullBack_PipsTriggerTolerance, PullBack_MinPips, "PullBackManager", _PullBackMA_BufferSize);
 
 ReggieTradeManager			_ReggieTradeManager(LotSize);
 
@@ -162,7 +162,7 @@ void OnTick() {
    if(_IsNewWeek) { _AccountManager.UpdateAccountValues(); }
    
    if(UseLotAdjuster) {
-      _ReggieTradeManager.UpdateLotSize(_AccountManager.GetAdjustetLotSize(LotSizeToEquity, LotSize));
+      _ReggieTradeManager.UpdateLotSize(_AccountManager.GetAdjustedLotSize(LotSizeToEquity, LotSize));
    }
    
    // Reanalyze all trades before trend/pullback analysis
@@ -184,7 +184,7 @@ void OnTick() {
 	if(_IsNewBar_PullBack && _TrendManager.GetCurrState() != Trend::State::INVALID_TREND) {
 	   if(_IsTradeableDay && _IsTradeableTime && _IsEquityOK) {
 	      if(UseUnlimitedOpenPosition || (!UseUnlimitedOpenPosition && PositionsTotal() == 0 && OrdersTotal() == 0) ) {
-			   const PullBack::State _PullBackState = _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState(), PullBack_MinPips, PullBack_PipsTriggerTolerance);
+			   const PullBack::State _PullBackState = _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState());
 			
 				if(_PullBackState == PullBack::State::VALID_UPPULLBACK) {
 				   _ReggieTradeManager.TryOpenOrder(ReggieTrade::TradeType::BUY, _FastPullBackMASettings.m_TimeFrame);

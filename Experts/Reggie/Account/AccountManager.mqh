@@ -20,7 +20,7 @@ class AccountManager {
    double GetAccountEquity() const { return(m_AccountEquity); }
    double GetAccountEquityPercentage() const { return(m_AccountEquityPercentage); }
    
-   double GetAdjustetLotSize(const double p_InitialEquity, const double p_InitialLotSize);
+   double GetAdjustedLotSize(const double p_InitialEquity, const double p_InitialLotSize);
    
    string GetAccountInfo(const double p_LotSize);
 };
@@ -37,7 +37,7 @@ void AccountManager::UpdateAccountBalance() {
    m_AccountEquityPercentage = (AccountInfoDouble(ACCOUNT_EQUITY) - m_AccountEquity) / m_AccountEquity * 100.0;  
 }
 
-double AccountManager::GetAdjustetLotSize(const double p_InitialEquity, const double p_InitialLotSize) {
+double AccountManager::GetAdjustedLotSize(const double p_InitialEquity, const double p_InitialLotSize) {
    return((AccountInfoDouble(ACCOUNT_EQUITY) / p_InitialEquity) * p_InitialLotSize);
 }
 
