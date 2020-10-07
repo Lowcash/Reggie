@@ -47,6 +47,14 @@ double GetNumPipsBetweenPrices(const double p_FirstPrice, const double p_SecondP
    );
 }
 
+bool IsBullCandle(const int p_BarIdx) {
+   return(Open[p_BarIdx] < Close[p_BarIdx]);
+}
+
+bool IsBearCandle(const int p_BarIdx) {
+   return(Open[p_BarIdx] > Close[p_BarIdx]);
+}
+
 bool IsValueInRange(const double p_Value, const double p_Begin, const double p_End) {
    const double _LowerValue = MathMin(p_Begin, p_End);
    const double _HigherValue = MathMax(p_Begin, p_End);

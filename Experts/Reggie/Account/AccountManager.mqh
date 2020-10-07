@@ -12,22 +12,35 @@ class AccountManager {
    double m_AccountEquity;
    double m_AccountEquityPercentage;
  public:
-   AccountManager(){};
+   AccountManager();
    
    void UpdateAccountValues();
    void UpdateAccountBalance();
    
    double GetAccountEquity() const { return(m_AccountEquity); }
    double GetAccountEquityPercentage() const { return(m_AccountEquityPercentage); }
+   
+   double GetAdjustetLotSize(const double p_InitialEquity, const double p_InitialLotSize);
+   
+   string GetAccountInfo(const double p_LotSize);
 };
+
+AccountManager::AccountManager() {
+   UpdateAccountValues();
+}
 
 void AccountManager::UpdateAccountValues() {
    m_AccountEquity = AccountInfoDouble(ACCOUNT_EQUITY); 
 }
 
 void AccountManager::UpdateAccountBalance() {
-   // Avoid divide by zero exception
-   if(m_AccountEquity == 0) { UpdateAccountValues(); }
-
    m_AccountEquityPercentage = (AccountInfoDouble(ACCOUNT_EQUITY) - m_AccountEquity) / m_AccountEquity * 100.0;  
+}
+
+double AccountManager::GetAdjustetLotSize(const double p_InitialEquity, const double p_InitialLotSize) {
+   return((AccountInfoDouble(ACCOUNT_EQUITY) / p_InitialEquity) * p_InitialLotSize);
+}
+
+string AccountManager::GetAccountInfo(const double p_LotSize) {
+   return(StringFormat("Week balance: %s%%; Lot size: %s", DoubleToString(m_AccountEquityPercentage, 2), DoubleToString(p_LotSize, 2)));
 }
