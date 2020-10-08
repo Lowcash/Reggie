@@ -76,24 +76,24 @@ TrendManager::TrendManager(MovingAverageSettings *p_FastMASettings, MovingAverag
 
 Trend::State TrendManager::GetState(const int p_MinCandles) {
    switch(m_CurrState) {
-   case Trend::State::VALID_UPTREND:
-      if(Bid > m_CurrMASlow) { return(Trend::State::VALID_UPTREND); }
-
-      break;
-   case Trend::State::VALID_DOWNTREND:
-      if(Bid < m_CurrMASlow) { return(Trend::State::VALID_DOWNTREND); }
-
-      break;
-   case Trend::State::INVALID_TREND: {
+      case Trend::State::VALID_UPTREND:
+         if(Bid > m_CurrMASlow) { return(Trend::State::VALID_UPTREND); }
+   
+         break;
+      case Trend::State::VALID_DOWNTREND:
+         if(Bid < m_CurrMASlow) { return(Trend::State::VALID_DOWNTREND); }
+   
+         break;
+      case Trend::State::INVALID_TREND: {
 	      bool _IsUpTrend = true, _IsDownTrend = true;
 	      double _MA_CurrFast = 0, _MA_CurrSlow = 0;
 	      
-	      for(int i = 1; i <= p_MinCandles && _IsUpTrend && _IsDownTrend; ++i) {
+	      for(int i = 0; i < p_MinCandles && _IsUpTrend && _IsDownTrend; ++i) {
 	         _MA_CurrFast = iMAMQL4(_Symbol, m_FastMASettings.m_TimeFrame, m_FastMASettings.m_Period, 0, m_FastMASettings.m_Method, m_FastMASettings.m_AppliedTo, i);
 	         _MA_CurrSlow = iMAMQL4(_Symbol, m_SlowMASettings.m_TimeFrame, m_SlowMASettings.m_Period, 0, m_SlowMASettings.m_Method, m_SlowMASettings.m_AppliedTo, i);
 
-	         if(!(Close[i] > _MA_CurrFast && _MA_CurrFast > _MA_CurrSlow)) { _IsUpTrend = false; }
-	         if(!(Close[i] < _MA_CurrFast && _MA_CurrFast < _MA_CurrSlow)) { _IsDownTrend = false; }   
+	         if(!(Close[i + 1] > _MA_CurrFast && _MA_CurrFast > _MA_CurrSlow)) { _IsUpTrend = false; }
+	         if(!(Close[i + 1] < _MA_CurrFast && _MA_CurrFast < _MA_CurrSlow)) { _IsDownTrend = false; }   
 	      }
 	
 	      if(_IsUpTrend) { return(Trend::State::VALID_UPTREND); }
