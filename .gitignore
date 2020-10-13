@@ -1,4 +1,4 @@
-experts.dat
+﻿experts.dat
 .vscode/c_cpp_properties.json
 .vscode/tasks.json
 Experts/Advisors/
@@ -31,7 +31,6 @@ Profiles/SymbolSets/
 Profiles/Tester/
 Scripts/Examples/
 Scripts/UnitTests/
-Indicators/Market/Smart AutoScroll MT5.ex5
 Profiles/Templates/ADX.tpl
 Profiles/Templates/BollingerBands.tpl
 Profiles/Templates/Momentum.tpl
