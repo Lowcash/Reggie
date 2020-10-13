@@ -7,8 +7,8 @@
 #property link      "https://www.mql5.com"
 #property version   "1.00"
 
-#include "../../Include/Internal/MQL4Helper.mqh"
-#include "../../Include/Internal/Common.mqh"
+#include "../../Core/Include/MQL4Helper.mqh"
+#include "../../Core/Include/Common.mqh"
 
 #include "Signal/SignalManager.mqh"
 #include "Order/OrderManager.mqh"

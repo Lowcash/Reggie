@@ -10,8 +10,8 @@
 #include <Arrays/List.mqh>
 #include <Trade/Trade.mqh>
 
-#include "../../../Include/Internal/MQL4Helper.mqh"
-#include "../../../Include/Internal/Common.mqh"
+#include "../../../Core/Include/MQL4Helper.mqh"
+#include "../../../Core/Include/Common.mqh"
 
 #include "Order.mqh"
 
