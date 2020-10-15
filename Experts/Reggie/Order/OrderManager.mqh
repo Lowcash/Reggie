@@ -22,11 +22,16 @@ class TradeManager {
    CTrade TradeFunc;
  public:
    TradeManager(const double p_LotSize);
+   
+   void UpdateLotSize(const double p_LotSize) { LotSize = p_LotSize; }
+   
+   double GetLotSize() const { return(LotSize); }
 };
 
-TradeManager::TradeManager(const double p_LotSize) 
-   : LotSize(p_LotSize) {
+TradeManager::TradeManager(const double p_LotSize) {
 	PipValue = GetForexPipValue();
+	
+	UpdateLotSize(p_LotSize);
 }
 
 class ReggieTradeManager : public TradeManager {
@@ -38,7 +43,9 @@ class ReggieTradeManager : public TradeManager {
  	void HandleOrderSend(const ulong p_Ticket);
  	void HandleOrderDelete(const ulong p_Ticket);
  	void HandleMakeDeal(const ulong p_Ticket);
+ 	
 	void AnalyzeTrades(const double p_CriticalValue);
+	void ForceCloseTrades();
 	
 	string GetOrdersStateInfo();
 	
@@ -53,19 +60,19 @@ bool ReggieTradeManager::TryOpenOrder(const ReggieTrade::TradeType p_OrderTradeT
    
    switch(p_OrderTradeType) {
 		case ReggieTrade::TradeType::BUY: {
-			const double _EnterPrice = iHigh(_Symbol, p_PullBackTimeFrame, iHighest(_Symbol, p_PullBackTimeFrame, MODE_HIGH, 5, 1)) + 3 * PipValue /*+ (m_PipValue*MarketInfo(_Symbol, MODE_SPREAD))*/;
-			const double _StopLossPrice = Bid - 3 * PipValue;
+			const double _EnterPrice = iHigh(_Symbol, p_PullBackTimeFrame, iHighest(_Symbol, p_PullBackTimeFrame, MODE_HIGH, 5, 2)) + 3 * PipValue /*+ (m_PipValue*MarketInfo(_Symbol, MODE_SPREAD))*/;
+			const double _StopLossPrice = iLow(_Symbol, p_PullBackTimeFrame, 1) - 3 * PipValue;
 			
 			const double _Move = MathAbs(_StopLossPrice - _EnterPrice);
          
-			if(TradeFunc.BuyStop(LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 1 * _Move, ORDER_TIME_GTC, 0, "R1")) {
+			if(TradeFunc.BuyStop(NormalizeDouble(LotSize, 2), _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 1 * _Move, ORDER_TIME_GTC, 0, "R1")) {
 			   if(TradeFunc.ResultRetcode() == TRADE_RETCODE_DONE) {
 			      _R1Ticket = TradeFunc.ResultOrder();
 			   }
 			} else {
 			   Print("Order failed with error #", GetLastError());
 			}
-			if(TradeFunc.BuyStop(LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 2 * _Move, ORDER_TIME_GTC, 0, "R2")) {
+			if(TradeFunc.BuyStop(NormalizeDouble(LotSize, 2), _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice + 2 * _Move, ORDER_TIME_GTC, 0, "R2")) {
 			   if(TradeFunc.ResultRetcode() == TRADE_RETCODE_DONE) {
 			      _R2Ticket = TradeFunc.ResultOrder();
 			   }
@@ -76,19 +83,19 @@ bool ReggieTradeManager::TryOpenOrder(const ReggieTrade::TradeType p_OrderTradeT
 			break;
 		}
 		case ReggieTrade::TradeType::SELL: {
-			const double _EnterPrice = iLow(_Symbol, p_PullBackTimeFrame, iLowest(_Symbol, p_PullBackTimeFrame, MODE_LOW, 5, 1)) - 3 * PipValue;
-			const double _StopLossPrice = Bid + 3 * PipValue;
+			const double _EnterPrice = iLow(_Symbol, p_PullBackTimeFrame, iLowest(_Symbol, p_PullBackTimeFrame, MODE_LOW, 5, 2)) - 3 * PipValue;
+			const double _StopLossPrice = iHigh(_Symbol, p_PullBackTimeFrame, 1) + 3 * PipValue;
 			
 			const double _Move = MathAbs(_StopLossPrice - _EnterPrice);
 			
-			if(TradeFunc.SellStop(LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice - 1 * _Move, ORDER_TIME_GTC, 0, "R1")) {
+			if(TradeFunc.SellStop(NormalizeDouble(LotSize, 2), _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice - 1 * _Move, ORDER_TIME_GTC, 0, "R1")) {
 			   if(TradeFunc.ResultRetcode() == TRADE_RETCODE_DONE) {
 			      _R1Ticket = TradeFunc.ResultOrder();
 			   }
 			} else {
 			   Print("Order failed with error #", GetLastError());
 			}
-			if(TradeFunc.SellStop(LotSize, _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice - 2 * _Move, ORDER_TIME_GTC, 0, "R2")) {
+			if(TradeFunc.SellStop(NormalizeDouble(LotSize, 2), _EnterPrice, _Symbol, _StopLossPrice, _EnterPrice - 2 * _Move, ORDER_TIME_GTC, 0, "R2")) {
 			   if(TradeFunc.ResultRetcode() == TRADE_RETCODE_DONE) {
 			      _R2Ticket = TradeFunc.ResultOrder();
 			   }
@@ -212,4 +219,43 @@ void ReggieTradeManager::AnalyzeTrades(const double p_CriticalValue) {
 			}
 		}
 	};
+}
+
+void ReggieTradeManager::ForceCloseTrades() {
+   ForEachCObject(_ReggieTrade, m_ReggieTrades) {
+      Trade* _R1Trade = ((ReggieTrade*)_ReggieTrade).GetReggieR1Trade();
+	   Trade* _R2Trade = ((ReggieTrade*)_ReggieTrade).GetReggieR2Trade();
+	   
+	   uint _R1ResultCode, _R2ResultCode;
+	   
+	   if(_R1Trade.GetState() == Trade::State::ORDER) {
+			if(TradeFunc.OrderDelete(_R1Trade.GetTicket())) {
+			   _R1ResultCode = TradeFunc.ResultRetcode();
+			} else {
+				Print("Order delete failed with error #", GetLastError());
+			}
+		}
+		if(_R2Trade.GetState() == Trade::State::ORDER) {
+			if(TradeFunc.OrderDelete(_R2Trade.GetTicket())) {
+			   _R2ResultCode = TradeFunc.ResultRetcode();
+			} else {
+				Print("Order delete failed with error #", GetLastError());
+			}
+		}
+		
+		if(_R1Trade.GetState() == Trade::State::POSITION) {
+			if(TradeFunc.PositionClose(_R1Trade.GetTicket())) {
+			   _R1ResultCode = TradeFunc.ResultRetcode();
+			} else {
+				Print("Position close failed with error #", GetLastError());
+			}
+		}
+		if(_R2Trade.GetState() == Trade::State::POSITION) {
+			if(TradeFunc.PositionClose(_R2Trade.GetTicket())) {
+			   _R2ResultCode = TradeFunc.ResultRetcode();
+			} else {
+				Print("Order close failed with error #", GetLastError());
+			}
+		}
+   }
 }

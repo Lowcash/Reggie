@@ -9,19 +9,46 @@
 
 #include "../../Core/Include/MQL4Helper.mqh"
 #include "../../Core/Include/Common.mqh"
+#include "../../Core/Include/Draw.mqh"
 
-#include "Signal/SignalManager.mqh"
+#include "../../Core/Signal/_Indicators/MovingAverage.mqh"
+
+#include "../../Core/Signal/Trend/TrendManager.mqh"
+#include "../../Core/Signal/PullBack/PullBackManager.mqh"
+
 #include "Order/OrderManager.mqh"
+#include "Account/AccountManager.mqh"
 
 //+------------------------------------------------------------------+
 //|                                                       Properties |
 //+------------------------------------------------------------------+
 
-ENUM_TIMEFRAMES     TrendMA_TimeFrame       = PERIOD_H1;
-ENUM_MA_METHOD      TrendMA_Method          = MODE_EMA;
-ENUM_APPLIED_PRICE  TrendMA_AppliedTo       = PRICE_CLOSE;
-int                 TrendMA_Slow            = 21;
-int                 TrendMA_Fast            = 8;
+input group          "Positions"
+input bool          UseUnlimitedOpenPosition = true;
+
+input group             "Lot adjuster"
+input bool          UseLotAdjuster           = true;
+input double        LotSize                 = 0.25;
+input double        LotSizeToEquity         = 1000;
+
+input double        EquityMaxLoss           = -5.00;
+input double        EquityMaxProfit         = 10.00; 
+
+input group              "Trade time"
+input int           TradeFrom               = 7;
+input int           TradeTo                 = 20;
+input bool          TradeOnMonday           = true; 
+input bool          TradeOnTuesday          = true; 
+input bool          TradeOnWednesday        = true; 
+input bool          TradeOnThursday         = true; 
+input bool          TradeOnFriday           = true;
+
+input group             "Trend"
+input ENUM_TIMEFRAMES     TrendMA_TimeFrame       = PERIOD_H1;
+input ENUM_MA_METHOD      TrendMA_Method          = MODE_EMA;
+input ENUM_APPLIED_PRICE  TrendMA_AppliedTo       = PRICE_CLOSE;
+input int                 TrendMA_Slow            = 21;
+input int                 TrendMA_Fast            = 8;
 color               TrendMA_SlowColor       = clrGold;
 color               TrendMA_FastColor       = clrMediumSeaGreen;
 int                 TrendMA_MinCandles      = 1;
@@ -29,46 +56,48 @@ int                 TrendMA_MinCandles      = 1;
 color               TrendMA_UpClr           = clrForestGreen;
 color               TrendMA_DownClr         = clrCrimson;
 
-ENUM_TIMEFRAMES     PullBackMA_TimeFrame    = PERIOD_M5;
-ENUM_MA_METHOD      PullBackMA_Method       = MODE_EMA;
-ENUM_APPLIED_PRICE  PullBackMA_AppliedTo    = PRICE_CLOSE;
-int                 PullBackMA_Slow         = 21;
-int                 PullBackMA_Medium       = 13;
-int                 PullBackMA_Fast         = 8;
+input group             "PullBack"
+input ENUM_TIMEFRAMES     PullBackMA_TimeFrame    = PERIOD_M5;
+input ENUM_MA_METHOD      PullBackMA_Method       = MODE_EMA;
+input ENUM_APPLIED_PRICE  PullBackMA_AppliedTo    = PRICE_CLOSE;
+input int                 PullBackMA_Slow         = 21;
+input int                 PullBackMA_Medium       = 13;
+input int                 PullBackMA_Fast         = 8;
 color               PullBackMA_SlowColor    = clrGold;
 color               PullBackMA_MediumColor  = clrCornflowerBlue;
 color               PullBackMA_FastColor    = clrMediumSeaGreen;
-input int                 PullBackMA_MinCandles   = 5;
+
+input double        PullBack_MinPips        = 0.5;
+input double        PullBack_PipsTriggerTolerance= 0.1;
 
 color               PullBackMA_UpClr        = clrForestGreen;
 color               PullBackMA_DownClr      = clrCrimson;
 
-input double        LotSize                 = 0.01;
-input bool          IsUnlimitedOpenPosition = true;
 //+------------------------------------------------------------------+
 //|                                                        Variables |
 //+------------------------------------------------------------------+
 
-const int                  _Markers_BufferSize     = 1000;
+const int                  _Markers_BufferSize     = 999999;
 
 ObjectBuffer               _MarkersBuffer("Marker", _Markers_BufferSize);
 
-MovingAverageSettings		_FastTrendMASetting(TrendMA_TimeFrame, TrendMA_Method, TrendMA_AppliedTo, TrendMA_Fast, 0);
-MovingAverageSettings		_SlowTrendMASetting(TrendMA_TimeFrame, TrendMA_Method, TrendMA_AppliedTo, TrendMA_Slow, 0);
-MovingAverageSettings		_FastPullBackMASetting(PullBackMA_TimeFrame, PullBackMA_Method, PullBackMA_AppliedTo, PullBackMA_Fast, 0);
-MovingAverageSettings		_MediumPullBackMASetting(PullBackMA_TimeFrame, PullBackMA_Method, PullBackMA_AppliedTo, PullBackMA_Medium, 0);
-MovingAverageSettings		_SlowPullBackMASetting(PullBackMA_TimeFrame, PullBackMA_Method, PullBackMA_AppliedTo, PullBackMA_Slow, 0);
+MovingAverageSettings		_FastTrendMASettings(_Symbol, TrendMA_TimeFrame, TrendMA_Method, TrendMA_AppliedTo, TrendMA_Fast, 0);
+MovingAverageSettings		_SlowTrendMASettings(_Symbol, TrendMA_TimeFrame, TrendMA_Method, TrendMA_AppliedTo, TrendMA_Slow, 0);
+MovingAverageSettings		_FastPullBackMASettings(_Symbol, PullBackMA_TimeFrame, PullBackMA_Method, PullBackMA_AppliedTo, PullBackMA_Fast, 0);
+MovingAverageSettings		_MediPullBackMASettings(_Symbol, PullBackMA_TimeFrame, PullBackMA_Method, PullBackMA_AppliedTo, PullBackMA_Medium, 0);
+MovingAverageSettings		_SlowPullBackMASettings(_Symbol, PullBackMA_TimeFrame, PullBackMA_Method, PullBackMA_AppliedTo, PullBackMA_Slow, 0);
 
-const int                  _TrendMA_BufferSize     = 1000;
-const int                  _PullBackMA_BufferSize  = 1000;
+const int                  _TrendMA_BufferSize     = 9999;
+const int                  _PullBackMA_BufferSize  = 9999;
 
 ObjectBuffer               _PullBackMA_FastBuffer("PullBackMA_Fast", _PullBackMA_BufferSize);
 
-TrendManager               _TrendManager("TrendManager", _TrendMA_BufferSize);
-PullBackManager				_PullBackManager("PullBackManager", _PullBackMA_BufferSize);
-
+TrendManager               _TrendManager(_TrendMA_BufferSize);
+PullBackManager				_PullBackManager(_PullBackMA_BufferSize);
 
 ReggieTradeManager			_ReggieTradeManager(LotSize);
+
+AccountManager             _AccountManager();
 
 int OnInit() {
    return(INIT_SUCCEEDED);
@@ -116,66 +145,87 @@ void OnTradeTransaction(const MqlTradeTransaction &p_Trans, const MqlTradeReques
 }
 
 void OnTick() {
-   MqlDateTime _CurrentTime; TimeCurrent(_CurrentTime);
-   
-   const bool _IsTradeableTime = _CurrentTime.hour >= 7 && _CurrentTime.hour < 20;
+   UpdatePredefinedVars();
    
    const bool _IsNewBar_Trend = IsNewBar(TrendMA_TimeFrame);
    const bool _IsNewBar_PullBack = IsNewBar(PullBackMA_TimeFrame);
+   const bool _IsNewWeek = IsNewWeek(_DayOfWeek, MONDAY);
    
-   Comment(_IsTradeableTime ? _ReggieTradeManager.GetOrdersStateInfo() : "NOT_TRADEABLE - NIGHT TIME\n" + _ReggieTradeManager.GetOrdersStateInfo());
+   const bool _IsTradeableDay = (_DayOfWeek == MONDAY && TradeOnMonday) ||
+                                (_DayOfWeek == TUESDAY && TradeOnTuesday) ||
+                                (_DayOfWeek == WEDNESDAY && TradeOnWednesday) ||
+                                (_DayOfWeek == THURSDAY && TradeOnThursday) ||
+                                (_DayOfWeek == FRIDAY && TradeOnFriday);
    
-   UpdatePredefinedVars();
+   const bool _IsTradeableTime = IsValueInRange(_TimeStruct.hour, TradeFrom - 1, TradeTo);
    
+   const bool _IsEquityOK = IsValueInRange(_AccountManager.GetAccountEquityPercentage(), EquityMaxLoss, EquityMaxProfit);
+   
+   //if(_IsNewBar_Trend) { _TrendManager.UpdateTrendValues(); }
+   //if(_IsNewBar_PullBack) { _PullBackManager.UpdatePullBackValues(); }
+   if(_IsNewWeek) { _AccountManager.UpdateAccountValues(); }
+   
+   if(UseLotAdjuster) {
+      _ReggieTradeManager.UpdateLotSize(_AccountManager.GetAdjustedLotSize(LotSizeToEquity, LotSize));
+   }
+   
+   // Reanalyze all trades before trend/pullback analysis
+   double _CurrIMASlow; SetMovingAverage(&_SlowPullBackMASettings, 1, _CurrIMASlow);
+   _ReggieTradeManager.AnalyzeTrades(_CurrIMASlow);
+   
+   // Trend analysis
    if(_IsNewBar_Trend) {
-      _TrendManager.UpdateTrendValues(_FastTrendMASetting, _SlowTrendMASetting);
-      
-   	const Trend::State _TrendState = _TrendManager.AnalyzeTrend(TrendMA_MinCandles, _FastTrendMASetting, _SlowTrendMASetting);
+   	const Trend::State _TrendState = _TrendManager.AnalyzeByIMAOutCandles(_FastTrendMASettings, _SlowTrendMASettings, TrendMA_MinCandles);
    	
-      if(_TrendManager.GetCurrState() == Trend::State::VALID_UPTREND) {
+      if(_TrendManager.GetCurrentState() == Trend::State::VALID_UPTREND) {
          _MarkersBuffer.GetNewObjectId();
       }
-      if(_TrendManager.GetCurrState() == Trend::State::VALID_DOWNTREND) {
+      if(_TrendManager.GetCurrentState() == Trend::State::VALID_DOWNTREND) {
          _MarkersBuffer.GetNewObjectId();   
       }
    }
+
+   // PullBack analysis
+	if(_IsNewBar_PullBack && _TrendManager.GetCurrentState() != Trend::State::INVALID_TREND) {
+	   if(_IsTradeableDay && _IsTradeableTime && _IsEquityOK) {
+	      if(UseUnlimitedOpenPosition || (!UseUnlimitedOpenPosition && PositionsTotal() == 0 && OrdersTotal() == 0) ) {
+			   const PullBack::State _PullBackState = _PullBackManager.AnalyzeInclTrend(_TrendManager.GetCurrentState(), _FastPullBackMASettings, _MediPullBackMASettings, _SlowPullBackMASettings, GetForexPipValue(), PullBack_PipsTriggerTolerance, PullBack_MinPips);
+			
+				if(_PullBackState == PullBack::State::VALID_UPPULLBACK) {
+				   _ReggieTradeManager.TryOpenOrder(ReggieTrade::TradeType::BUY, _FastPullBackMASettings.m_TimeFrame);
+				}
+				if(_PullBackState == PullBack::State::VALID_DOWNPULLBACK) {
+				   _ReggieTradeManager.TryOpenOrder(ReggieTrade::TradeType::SELL, _FastPullBackMASettings.m_TimeFrame);
+				}
+			}
+	   }
+   }
+
+   // Update balance and info
+   _AccountManager.UpdateAccountBalance();
    
+   if(_AccountManager.GetAccountEquityPercentage() > EquityMaxProfit) { 
+      _ReggieTradeManager.ForceCloseTrades(); 
+   }
+   
+   SetInfoComment(_IsTradeableDay, _DayOfWeek, _IsTradeableTime, _ReggieTradeManager.GetOrdersStateInfo(), _AccountManager.GetAccountInfo(_ReggieTradeManager.GetLotSize()));
+   //+------------------------------------------------------------------+
+   
+   // Draw objects into the chart
    if(_Period == TrendMA_TimeFrame) {
    	Trend* _SelectedTrend = _TrendManager.GetSelectedTrend();
 
-      if(_TrendManager.GetCurrState() == Trend::State::VALID_UPTREND) {
+      if(_TrendManager.GetCurrentState() == Trend::State::VALID_UPTREND) {
          DrawTrendMarker(_MarkersBuffer.GetSelecterObjectId(), iTimeMQL4(_Symbol, TrendMA_TimeFrame, 0), Low[0], true, TrendMA_UpClr);
          DrawTrendMarker(_SelectedTrend.GetSignalID(), _SelectedTrend.GetBeginDateTime(), _SelectedTrend.GetHighestValue(), _SelectedTrend.GetEndDateTime(), _SelectedTrend.GetLowestValue(), TrendMA_UpClr);
       }
-      if(_TrendManager.GetCurrState() == Trend::State::VALID_DOWNTREND) {
+      if(_TrendManager.GetCurrentState() == Trend::State::VALID_DOWNTREND) {
          DrawTrendMarker(_MarkersBuffer.GetSelecterObjectId(), iTimeMQL4(_Symbol, TrendMA_TimeFrame, 0), Low[0], false, TrendMA_DownClr);
          DrawTrendMarker(_SelectedTrend.GetSignalID(), _SelectedTrend.GetBeginDateTime(), _SelectedTrend.GetLowestValue(), _SelectedTrend.GetEndDateTime(), _SelectedTrend.GetHighestValue(), TrendMA_DownClr);
       }
    }
    
-   // You can only analyze pullbacks if there is a trend 
-   if(_TrendManager.GetCurrState() != Trend::State::INVALID_TREND) {
-   	_ReggieTradeManager.AnalyzeTrades(_PullBackManager.GetCurrMASlow());
-   		
-   	if(_IsNewBar_PullBack) {
-   	   _PullBackManager.UpdatePullBackValues(_FastPullBackMASetting, _MediumPullBackMASetting, _SlowPullBackMASetting);
-
-   	   if(_IsTradeableTime) {
-   	      if(IsUnlimitedOpenPosition || (!IsUnlimitedOpenPosition && PositionsTotal() == 0 && OrdersTotal() == 0) ) {
-   			   const PullBack::State _PullBackState = _PullBackManager.AnalyzePullBack(_TrendManager.GetCurrState(), _FastPullBackMASetting);
-   			
-   				if(_PullBackState == PullBack::State::VALID_UPPULLBACK) {
-   				   _ReggieTradeManager.TryOpenOrder(ReggieTrade::TradeType::BUY, _FastPullBackMASetting.m_TimeFrame);
-   				}
-   				if(_PullBackState == PullBack::State::VALID_DOWNPULLBACK) {
-   				   _ReggieTradeManager.TryOpenOrder(ReggieTrade::TradeType::SELL, _FastPullBackMASetting.m_TimeFrame);
-   				}
-   			}
-   	   }
-      }
-   }
-   
-   if(_Period == PullBackMA_TimeFrame && _TrendManager.GetCurrState() != Trend::State::INVALID_TREND) {
+   if(_Period == PullBackMA_TimeFrame && _TrendManager.GetCurrentState() != Trend::State::INVALID_TREND) {
       if(_IsNewBar_PullBack) {
 	      _PullBackMA_FastBuffer.GetNewObjectId();
 	   }
@@ -185,51 +235,24 @@ void OnTick() {
 
 		// In case MA is rendering incorrectly, try change Model to "Every tick..."
 		
-      DrawMovingAverage(_PullBackMA_FastBuffer.GetSelecterObjectId(), 0, _MA_PrevFast, _MA_CurrFast, _TrendManager.GetCurrState() == Trend::State::VALID_UPTREND ? PullBackMA_UpClr : PullBackMA_DownClr);
+      DrawMovingAverage(_PullBackMA_FastBuffer.GetSelecterObjectId(), 1, _MA_PrevFast, _MA_CurrFast, _TrendManager.GetCurrentState() == Trend::State::VALID_UPTREND ? PullBackMA_UpClr : PullBackMA_DownClr);
 	}
+	//+------------------------------------------------------------------+
 }
 
-//+------------------------------------------------------------------+
-
-void DrawTrendMarker(const string p_ID, const datetime p_DateTime, const double p_Value, const bool p_IsMarkerUpDirection, color p_Color) {
-   const long SChartId = ChartID();
-
-   if(ObjectFind(SChartId, p_ID) != -1) 
-      ObjectDelete(SChartId, p_ID);
+void SetInfoComment(const bool p_IsTradeableDay, const ENUM_DAY_OF_WEEK p_DayOfWeek, const bool p_IsTradeableTime, const string p_OrdersInfo, const string p_AccountInfo) {
+   string _Info = "";
    
-   if(ObjectCreate(SChartId, p_ID, OBJ_ARROW, 0, p_DateTime, p_Value)) {
-      ObjectSetInteger(SChartId, p_ID, OBJPROP_ARROWCODE, p_IsMarkerUpDirection ? 233 : 234);
-      ObjectSetInteger(SChartId, p_ID, OBJPROP_COLOR, p_Color);
-      ObjectSetInteger(SChartId, p_ID, OBJPROP_WIDTH, 1);
-   } else 
-      Print("Marker was not created - something went wrong!!");
+   if(p_IsTradeableDay) { 
+      if(!p_IsTradeableTime) {
+         StringAdd(_Info, "NOT_TRADEABLE - NIGHT TIME\n");
+      }
+   } else {
+      StringAdd(_Info, StringFormat("NOT_TRADEABLE - %s\n", EnumToString(p_DayOfWeek)));
+   }
+   
+   StringAdd(_Info, StringFormat("%s\n", p_OrdersInfo));
+   StringAdd(_Info, StringFormat("%s\n", p_AccountInfo));
+   
+   Comment(_Info);
 }
-
-void DrawTrendMarker(const string p_ID, const datetime p_BeginDateTime, const double p_BeginValue, const datetime p_EndDateTime, const double p_EndValue, const color p_Color) {
-   const long SChartId = ChartID();
-
-   if(ObjectFind(SChartId, p_ID) != -1) 
-      ObjectDelete(SChartId, p_ID);
-
-   if(ObjectCreate(SChartId, p_ID, OBJ_RECTANGLE, 0, p_BeginDateTime, p_BeginValue, p_EndDateTime, p_EndValue)) {
-      ObjectSetInteger(SChartId, p_ID, OBJPROP_COLOR, p_Color);
-      ObjectSetInteger(SChartId, p_ID, OBJPROP_BACK, false);
-      ObjectSetInteger(SChartId, p_ID, OBJPROP_WIDTH, 2);
-   } else 
-      Print("Marker was not created - something went wrong!!");
-}
-
-void DrawMovingAverage(const string p_MAID, const int p_MAOffset, const double p_MAPrevValue, const double p_MACurrValue, const color p_MAColor) {
-   const long SChartId = ChartID();
-
-   if(ObjectFind(SChartId, p_MAID) != -1) 
-      ObjectDelete(SChartId, p_MAID);
-
-   if(ObjectCreate(SChartId, p_MAID, OBJ_TREND, 0, Time[p_MAOffset + 0], p_MACurrValue, Time[p_MAOffset + 1], p_MAPrevValue)) {
-      ObjectSetInteger(SChartId, p_MAID, OBJPROP_COLOR, p_MAColor);
-      ObjectSetInteger(SChartId, p_MAID, OBJPROP_WIDTH, 3);
-      ObjectSetInteger(SChartId, p_MAID, OBJPROP_RAY, false);
-   } else 
-      Print("MA was not created - something went wrong!!");
-}
-//+------------------------------------------------------------------+
